@@ -1,6 +1,6 @@
 # Bike Bandit
 
-Bike Bandit GraphQL Project
+Bike Bandit OEM Availability GraphQL Project
 
 ## Requirements
 
@@ -9,7 +9,7 @@ Bike Bandit GraphQL Project
 
 ## Code repo setup
 
-- Clone the [awanoo bitbucket repo](https://bitbucket.org/awanoo/oem_graphql/src/master/)
+- Clone the [BB OEM GraphQL bitbucket repo](https://bitbucket.org/awanoo/oem_graphql/src/master/)
 
 - SSH
 
@@ -27,7 +27,11 @@ git clone https://cheeloo@bitbucket.org/awanoo/oem_graphql.git
 
 ```bash
 npm install
+```
+
 or
+
+```bash
 yarn install
 ```
 
@@ -44,7 +48,7 @@ yarn install
 There is a `start.js` script that will run availability graphql service locally. We combine this in the projects `start` script with nodemon that you can run:
 
 ```bash
-npm start or npm run start
+npm start
 ```
 
 or
