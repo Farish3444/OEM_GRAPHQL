@@ -7,6 +7,9 @@
 node_modules/
 dist/
 
+#tsBuildInfoFile
+*.tsbuildinfo
+
 # Compiled Java class files
 *.class
 
