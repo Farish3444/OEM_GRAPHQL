@@ -1,3 +1,58 @@
 type Query {
   hello: String
 }
+
+enum Manufacturer_Type {
+  Kawasaki,
+  Yamaha,
+  Honda,
+  Husqvarna,
+  KTM,
+  Polaris,
+  Suzuki,
+  CanAm,
+  SeaDoo,
+  Triumph
+}
+
+type AvailabilityInfo {
+  id:String
+  status:String
+  statusMessage:String
+  quantity:Int
+  leadTime:String
+  supersedePartNumber:String
+  requestedPartNumber:String
+  requestedQty:Int 
+  requestedSkuId:String
+}
+
+type ResponseError {
+  code: String
+  message: String
+}
+
+type OEMAvailabilityResponse {
+  result : [AvailabilityInfo]
+  responseError : ResponseError
+}
+
+type OEMPartInfo {
+  partNumber :String
+  requestedQty :Int
+}
+
+input OEMPartInfo {
+  partNumber :String
+  requestedQty :Int
+}
+
+input QueryInput {
+  manufacturerType: Manufacturer_Type
+  partInfo: [OEMPartInfo]
+}
+
+type Query {
+   queryOEMAvailability(input: QueryInput): String
+   response: OEMAvailabilityResponse
+}
