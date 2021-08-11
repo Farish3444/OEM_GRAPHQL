@@ -13,10 +13,6 @@ const typeDefs = gql(
 
 const resolvers: any = {
   Query: {
-    // hello: async () => {
-    //   let result = "Hello World";
-    //   return result;
-    // },
     queryOEMAvailability: async (_: any, args: { input: types.QueryInput }) => {
       // Sample Error Response
       // return {
