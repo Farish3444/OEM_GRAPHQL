@@ -1,58 +1,66 @@
-type Query {
-  hello: String
+"Enum value for all the possible manufacturer types"
+enum ManufacturerType {
+  KAWASAKI
+  YAMAHA
+  HONDA
+  HUSQVARNA
+  KTM
+  POLARIS
+  SUZUKI
+  CAN_AM
+  SEA_DOO
+  TRIUMPH
+  APRILLIA
+  ARCTIC_CAT
+  KYMCO
+  MOTO_GUZZI
+  PIAGGIO
+  VESPA
+  BMW
 }
 
-enum Manufacturer_Type {
-  Kawasaki,
-  Yamaha,
-  Honda,
-  Husqvarna,
-  KTM,
-  Polaris,
-  Suzuki,
-  CanAm,
-  SeaDoo,
-  Triumph
-}
-
+"The availability info in the response's result array"
 type AvailabilityInfo {
-  id:String
-  status:String
-  statusMessage:String
-  quantity:Int
-  leadTime:String
-  supersedePartNumber:String
-  requestedPartNumber:String
-  requestedQty:Int 
-  requestedSkuId:String
+  id: String!
+  status: String!
+  statusMessage: String
+  quantity: Int!
+  leadTime: String
+  supersedePartNumber: String
+  requestedPartNumber: String!
+  requestedQty: Int!
+  requestedSkuId: String
+  requestedManufacturerType: String
 }
 
+"The response error object that includes code and message properties"
 type ResponseError {
-  code: String
+  code: String!
   message: String
 }
 
+"The OEM Availability Response Object"
 type OEMAvailabilityResponse {
-  result : [AvailabilityInfo]
-  responseError : ResponseError
+  result: [AvailabilityInfo]
+  responseError: ResponseError
 }
 
-type OEMPartInfo {
-  partNumber :String
-  requestedQty :Int
-}
-
+"The OEMPartInfo request input object"
 input OEMPartInfo {
-  partNumber :String
-  requestedQty :Int
+  partNumber: String!
+  requestedQty: Int!
+  skuId: String
+  VIN: String
 }
 
+"The QueryInput request input object"
 input QueryInput {
-  manufacturerType: Manufacturer_Type
-  partInfo: [OEMPartInfo]
+  manufacturerType: ManufacturerType!
+  partInfos: [OEMPartInfo]!
 }
 
+"BB OEM Availability GraphQL Queries"
 type Query {
-   queryOEMAvailability(input: QueryInput): String
-   response: OEMAvailabilityResponse
+  "Queries for OEM Availability Information"
+  queryOEMAvailability(input: QueryInput): OEMAvailabilityResponse
 }
