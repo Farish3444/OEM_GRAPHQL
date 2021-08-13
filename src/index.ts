@@ -7,7 +7,7 @@ import { readFileSync } from "fs";
 import { resolve } from "path";
 import * as types from "./common/types";
 import * as agql from "./common/graphqlConfig";
-import { KawasakiDashboard } from "./dashboards";
+import { KawasakiDashboard, kawasakiDashboard } from "./dashboards";
 
 const typeDefs = gql(
   readFileSync(resolve(__dirname, "../schema.graphql"), { encoding: "utf8" })
@@ -27,7 +27,11 @@ const resolvers: any = {
         types.ManufacturerType.KAWASAKI
       ) {
         console.log("Calling Kawasaki dashboard...");
-        context.kawasakiDashBoard.crawl(args.input.partInfos);
+        let jsonResponse = context.kawasakiDashboard.crawl(
+          args.input.partInfos
+        );
+        // transform json response to GraphQL specs
+        let graphQL = KawasakiDashboard.transformJSON2GraphQL(jsonResponse);
         return {
           result: [
             {
@@ -73,14 +77,12 @@ const resolvers: any = {
   },
 };
 
-const kawasakiDB = new KawasakiDashboard();
-
 try {
   const server = new ApolloServer({
     typeDefs,
     resolvers,
     context: () => ({
-      kawasakiDashBoard: kawasakiDB,
+      kawasakiDashboard: kawasakiDashboard,
     }),
     plugins: [
       ApolloServerPluginLandingPageGraphQLPlayground({

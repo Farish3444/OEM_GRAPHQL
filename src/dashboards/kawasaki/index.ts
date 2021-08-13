@@ -25,6 +25,7 @@ export class KawasakiDashboard implements ManufacturerInterface {
   private processData: boolean = false;
   public imgUrl: any;
 
+  // Need to return the JSON data back to GraphQL
   public async crawl(partInfos: [types.OEMPartInfo]) {
     await this.initialize();
     await this.login(USER_NAME, PASSWORD);
@@ -43,6 +44,7 @@ export class KawasakiDashboard implements ManufacturerInterface {
     }
   }
 
+  // Need to revisit login approach...
   public async login(userName: string, password: string) {
     try {
       if (fs.existsSync(COOKIE_PATH)) {
@@ -59,11 +61,12 @@ export class KawasakiDashboard implements ManufacturerInterface {
       this.processData = true;
     } catch (error) {
       console.log("login error==>", error);
-
       await this.reLogin(COOKIE_PATH, this.username, this.password);
     }
   }
 
+  // Need to generate JSON Response and return to the calling method
+  // Need to perform error handling
   public async inquiry(partInfos: [types.OEMPartInfo]) {
     if (!this.processData) {
       return;
@@ -106,7 +109,7 @@ export class KawasakiDashboard implements ManufacturerInterface {
             "diamond-blue-1.gif",
           ];
           const status = ["All", "None", "Partial", "Packages built to order"];
-          var statusName = "";
+          let statusName = "";
           for (let i = 0; i < imgName.length; i++) {
             const check_url = imgUrls.includes(imgName[i]);
 
@@ -129,7 +132,7 @@ export class KawasakiDashboard implements ManufacturerInterface {
         if (query) {
           if (query.length > 0) {
             for (let i = 0; i < query.length; i++) {
-              var cells = query[i].querySelectorAll("td.TableDataDark");
+              let cells = query[i].querySelectorAll("td.TableDataDark");
 
               if (cells.length > 0) {
                 let key1 = (<HTMLTableCellElement>cells[0]).innerText
@@ -140,7 +143,7 @@ export class KawasakiDashboard implements ManufacturerInterface {
                   .replace(/ /g, "");
                 keyArray.push(key1);
                 keyArray.push(key2);
-                var lightCells = query[i].querySelectorAll("td.TableDataLight");
+                let lightCells = query[i].querySelectorAll("td.TableDataLight");
 
                 let val1 = (<HTMLTableCellElement>lightCells[0]).innerText
                   .replace(/\r?\n|\r/g, "  ")
@@ -164,19 +167,24 @@ export class KawasakiDashboard implements ManufacturerInterface {
                   let minKey = new Array();
                   let minVal = new Array();
 
-                  //   const new_key_query = (<HTMLTableCellElement>lightCells[1])
-                  //     .querySelector("table > tbody")
-                  //     .querySelectorAll("tr")[0]
-                  //     .querySelectorAll("td");
+                  const L1 = <HTMLTableCellElement>lightCells[1];
+                  let L2 = L1 && L1.querySelector("table > tbody");
+                  let L3 = L2 && L2.querySelectorAll("tr")[0];
+                  let new_key_query = L3 && L3.querySelectorAll("td");
 
-                  // //   for (let i = 0; i < new_key_query.length; i++) {
-                  // //     const newKey = new_key_query[i].innerText.replace(/ /g, "");
-                  // //     minKey.push(newKey);
-                  // //   }
-                  // //   const new_value_query = (<HTMLTableCellElement>lightCells[1])
-                  // //     .querySelector("table > tbody")
-                  // //     .querySelectorAll("tr")[1]
-                  // //     .querySelectorAll("td");
+                  // const new_key_query = (<HTMLTableCellElement>lightCells[1])
+                  //   .querySelector("table > tbody")
+                  //   .querySelectorAll("tr")[0]
+                  //   .querySelectorAll("td");
+
+                  //   for (let i = 0; i < new_key_query.length; i++) {
+                  //     const newKey = new_key_query[i].innerText.replace(/ /g, "");
+                  //     minKey.push(newKey);
+                  //   }
+                  //   const new_value_query = (<HTMLTableCellElement>lightCells[1])
+                  //     .querySelector("table > tbody")
+                  //     .querySelectorAll("tr")[1]
+                  //     .querySelectorAll("td");
                   //   for (let i = 0; i < new_value_query.length; i++) {
                   //     if (i == 1 || i == 2 || i == 3) {
                   //       const imgSrc =
@@ -225,6 +233,7 @@ export class KawasakiDashboard implements ManufacturerInterface {
         message: SUCCESS_MESSAGE,
         items: responseGet,
       };
+
       let Total_time = +new Date() - start;
       console.log("Total Process Time in milliseconds", Total_time);
       console.log("Process Completed Successfully");
@@ -253,4 +262,14 @@ export class KawasakiDashboard implements ManufacturerInterface {
     fs.writeFileSync(path, cookieJson);
     await this.inquiry(this.arr);
   }
+
+  public static transformJSON2GraphQL(
+    jsonResponse: any
+  ): types.OEMAvailabilityResponse {
+    // Leverage this method to transform dashboard json response to GraphQL response
+    return {};
+  }
 }
+
+const kawasakiDashboard = new KawasakiDashboard();
+export { kawasakiDashboard };
