@@ -30,7 +30,7 @@ export interface OEMPartInfo {
 // interface for QueryInput
 export interface QueryInput {
   manufacturerType: ManufacturerType;
-  partInfos: [OEMPartInfo];
+  partInfos: OEMPartInfo[];
 }
 
 // interface for AvailabilityInfo
@@ -38,7 +38,7 @@ export interface AvailabilityInfo {
   id: string;
   status: string;
   statusMessage?: string;
-  quantity?: number;
+  quantity: number;
   leadTime?: string;
   supersedePartNumber?: string;
   requestedPartNumber: string;
@@ -55,6 +55,6 @@ export interface ResponseError {
 
 // interface for OEMAvailabilityResponse
 export interface OEMAvailabilityResponse {
-  result?: [AvailabilityInfo];
+  result?: AvailabilityInfo[];
   responseError?: ResponseError;
 }

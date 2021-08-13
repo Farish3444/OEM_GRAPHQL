@@ -30,6 +30,8 @@ export class KawasakiDashboard implements ManufacturerInterface {
     await this.initialize();
     await this.login(USER_NAME, PASSWORD);
     await this.inquiry(partInfos);
+    console.log(this.data);
+    console.log(this.data.items[0].Availability);
     return this.data;
   }
 
@@ -234,7 +236,6 @@ export class KawasakiDashboard implements ManufacturerInterface {
     }
   }
   public async reLogin(path: string, username: string, password: string) {
-
     await this.page.goto(BASE_URL);
 
     await this.page.type('input[name="username"]', username);
@@ -250,24 +251,38 @@ export class KawasakiDashboard implements ManufacturerInterface {
   }
 
   public static transformJSON2GraphQL(
-    jsonResponse: any, inputData: types.QueryInput
-  ): types.OEMAvailabilityResponse {    
+    jsonResponse: any,
+    inputData: types.QueryInput
+  ): types.OEMAvailabilityResponse {
     // Leverage this method to transform dashboard json response to GraphQL response
-    const graphQLResponse = jsonResponse.items[0]  
-      
-    let result: [types.AvailabilityInfo] = [
-      {id: graphQLResponse.ItemNumber,
-      status:  graphQLResponse.Status,
-      statusMessage:graphQLResponse.Description,
-      // quantity: graphQLResponse.requestedQty,
-      // leadTime: graphQLResponse.ApplicableYears,
-      // supersedePartNumber?: graphQLResponse.,
-      requestedPartNumber: inputData.partInfos[0].partNumber,
-      requestedQty: inputData.partInfos[0].requestedQty,
-      // requestedSkuId?: graphQLResponse.,
-      requestedManufacturerType: inputData.manufacturerType.toString()}
-    ]   
-    return {result};
+    // const graphQLResponse = jsonResponse.items[0];
+    let arrayList = new Array();
+    let errorResult;
+    if (jsonResponse.items && jsonResponse.items.length > 0) {
+      for (let i = 0; i < jsonResponse.items.length; i++) {
+        arrayList.push({
+          id: jsonResponse.items[i].ItemNumber,
+          status: jsonResponse.items[i].Status,
+          statusMessage: jsonResponse.items[i].Description,
+          quantity: jsonResponse.items[i].Availability.Qty,
+          // leadTime: graphQLResponse.ApplicableYears,
+          // supersedePartNumber?: graphQLResponse.,
+          requestedPartNumber: inputData.partInfos[i].partNumber,
+          requestedQty: inputData.partInfos[i].requestedQty,
+          // requestedSkuId?: graphQLResponse.,
+          requestedManufacturerType: inputData.manufacturerType.toString(),
+        });
+      }
+    } else {
+      errorResult = {
+        code: "100",
+        message: "JSON item is empty or null",
+      };
+    }
+    return {
+      result: arrayList,
+      responseError: errorResult,
+    };
   }
 }
 

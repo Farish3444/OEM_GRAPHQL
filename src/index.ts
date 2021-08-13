@@ -29,12 +29,13 @@ const resolvers: any = {
         console.log("Calling Kawasaki dashboard...");
         let jsonResponse = await context.kawasakiDashboard.crawl(
           args.input.partInfos
-        );        
+        );
         // transform json response to GraphQL specs
-        let graphQL = KawasakiDashboard.transformJSON2GraphQL(jsonResponse,args.input);        
-        return {
-          result:graphQL.result,
-        };
+        let graphQLResponse = KawasakiDashboard.transformJSON2GraphQL(
+          jsonResponse,
+          args.input
+        );
+        return graphQLResponse;
       } else if (
         types.ManufacturerType[manufacturerType] ==
         types.ManufacturerType.YAMAHA
