@@ -38,7 +38,7 @@ export interface AvailabilityInfo {
   id: string;
   status: string;
   statusMessage?: string;
-  quantity: number;
+  quantity?: number;
   leadTime?: string;
   supersedePartNumber?: string;
   requestedPartNumber: string;

@@ -27,24 +27,13 @@ const resolvers: any = {
         types.ManufacturerType.KAWASAKI
       ) {
         console.log("Calling Kawasaki dashboard...");
-        let jsonResponse = context.kawasakiDashboard.crawl(
+        let jsonResponse = await context.kawasakiDashboard.crawl(
           args.input.partInfos
-        );
+        );        
         // transform json response to GraphQL specs
-        let graphQL = KawasakiDashboard.transformJSON2GraphQL(jsonResponse);
+        let graphQL = KawasakiDashboard.transformJSON2GraphQL(jsonResponse,args.input);        
         return {
-          result: [
-            {
-              id: "100",
-              status: "Some Status...",
-              statusMessage: "statusMessage(optional)",
-              quantity: 1,
-              leadTime: "1 week",
-              requestedPartNumber: args.input.partInfos[0].partNumber,
-              requestedQty: args.input.partInfos[0].requestedQty,
-              requestedManufacturerType: args.input.manufacturerType,
-            },
-          ],
+          result:graphQL.result,
         };
       } else if (
         types.ManufacturerType[manufacturerType] ==
