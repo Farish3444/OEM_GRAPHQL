@@ -21,7 +21,6 @@ export class KawasakiDashboard implements ManufacturerInterface {
   public data: any;
   private browser: any;
   private page: any;
-  private context: any;
   private processData: boolean = false;
   public imgUrl: any;
 
@@ -69,7 +68,7 @@ export class KawasakiDashboard implements ManufacturerInterface {
     }
   }
 
-  public async inquiry(arr: any[]) {
+  public async inquiry(partInfos: types.OEMPartInfo[]) {
     if (!this.processData) {
       return;
     }
@@ -77,11 +76,11 @@ export class KawasakiDashboard implements ManufacturerInterface {
       let start = +new Date();
       await this.page.goto(ITEM_INQUIRY_URL, { waitUntil: "networkidle2" });
       await this.page.waitForTimeout(1000);
-      for (let i = 0; i < arr.length; i++) {
+      for (let i = 0; i < partInfos.length; i++) {
         const no = i + 1;
         const element = "SearchItemNbr_" + no;
         const qty_element = "SearchItemQty_" + no;
-        await this.page.type(`input[id=${element}]`, arr[i].partNumber, {
+        await this.page.type(`input[id=${element}]`, partInfos[i].partNumber, {
           delay: 50,
         });
         await this.page.$eval(
@@ -89,7 +88,7 @@ export class KawasakiDashboard implements ManufacturerInterface {
           (el, qty) => {
             el.value = qty;
           },
-          arr[i].requestedQty
+          partInfos[i].requestedQty
         );
       }
       let submitButton = await this.page.$x('//*[@id="btnSubmit"]');
