@@ -26,7 +26,7 @@ type AvailabilityInfo {
   statusMessage: String
   quantity: Int!
   leadTime: String
-  supersedePartNumber: String
+  supersededPartNumber: String
   requestedPartNumber: String!
   requestedQty: Int!
   requestedSkuId: String

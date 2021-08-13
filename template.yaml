@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
 Description: >
-  gql-lambda-app
+  bb-oem-lambda-app
 
   Apollo GraphQL running as a lambda function
   
@@ -13,13 +13,13 @@ Resources:
   GQLFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: gql-lambda-app/
+      CodeUri: ./
       Handler: app.lambdaHandler
       Runtime: nodejs14.x
       Timeout: 30
       MemorySize: 4096
       Layers:
-        - !Sub "arn:aws:lambda:us-east-2:764866452798:layer:chrome-aws-lambda:22" 
+        - !Sub "arn:aws:lambda:us-west-2:764866452798:layer:chrome-aws-lambda:22" 
       Events:
         GQLApi:
           Type: Api

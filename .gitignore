@@ -10,6 +10,10 @@ dist/
 #tsBuildInfoFile
 *.tsbuildinfo
 
+#AWS sam config
+*.aws-sam
+*.toml
+
 # Compiled Java class files
 *.class
 
