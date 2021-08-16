@@ -14,6 +14,7 @@ const typeDefs = gql(
 );
 
 const resolvers: any = {
+  DateTime: types.AwanooDateTime,
   Query: {
     queryOEMAvailability: async (
       _: any,

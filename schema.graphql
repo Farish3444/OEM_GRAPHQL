@@ -1,3 +1,6 @@
+"A date and time, represented as an ISO-8601 string in the format YYYY-MM-DDThh:mm:ss.sssZ"
+scalar DateTime
+
 "Enum value for all the possible manufacturer types"
 enum ManufacturerType {
   KAWASAKI
@@ -31,6 +34,7 @@ type AvailabilityInfo {
   requestedQty: Int!
   requestedSkuId: String
   requestedManufacturerType: String
+  timeStamp: DateTime!
 }
 
 "The response error object that includes code and message properties"

@@ -1,3 +1,5 @@
+export { AwanooDateTime } from "./scalars/DateTime";
+
 //ENUM value for the manufacturer type
 export enum ManufacturerType {
   KAWASAKI,
@@ -45,6 +47,7 @@ export interface AvailabilityInfo {
   requestedQty: number;
   requestedSkuId?: string;
   requestedManufacturerType: string;
+  timeStamp: Date;
 }
 
 // interface for ResponseError

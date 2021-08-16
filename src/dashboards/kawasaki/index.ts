@@ -48,7 +48,7 @@ export class KawasakiDashboard implements ManufacturerInterface {
 
   // Need to revisit login approach...
   public async login(userName: string, password: string) {
-    await this.reLogin(COOKIE_PATH, userName, password);
+    // await this.reLogin(COOKIE_PATH, userName, password);
     try {
       if (fs.existsSync(COOKIE_PATH)) {
         const exCookies = fs.readFileSync(COOKIE_PATH, "utf8");
@@ -259,17 +259,24 @@ export class KawasakiDashboard implements ManufacturerInterface {
     let errorResult;
     if (jsonResponse.items && jsonResponse.items.length > 0) {
       for (let i = 0; i < jsonResponse.items.length; i++) {
+        let uniqueTimeStamp = new Date();
+        let uniqueID = Math.floor(Date.now() + Math.random() * 1000);
         arrayList.push({
-          id: jsonResponse.items[i].ItemNumber,
+          id: uniqueID,
           status: jsonResponse.items[i].Status,
           statusMessage: jsonResponse.items[i].Description,
-          quantity: jsonResponse.items[i].Availability.Qty,
+          quantity: jsonResponse.items[i].Availability.Qty
+            ? jsonResponse.items[i].Availability.Qty
+            : 0,
           // leadTime: graphQLResponse.ApplicableYears,
-          // supersedePartNumber?: graphQLResponse.,
+          supersededPartNumber:
+            jsonResponse.items[i].Status == "CANCELED"
+              ? jsonResponse.items[i].ItemNumber
+              : null,
           requestedPartNumber: inputData.partInfos[i].partNumber,
           requestedQty: inputData.partInfos[i].requestedQty,
-          // requestedSkuId?: graphQLResponse.,
           requestedManufacturerType: inputData.manufacturerType.toString(),
+          timeStamp: uniqueTimeStamp,
         });
       }
     } else {
