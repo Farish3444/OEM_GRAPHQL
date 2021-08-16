@@ -23,14 +23,13 @@ export class KawasakiDashboard implements ManufacturerInterface {
   private page: any;
   private processData: boolean = false;
   public imgUrl: any;
+  private validationFailed: boolean = false;
 
   // Need to return the JSON data back to GraphQL
   public async crawl(partInfos: [types.OEMPartInfo]) {
     await this.initialize();
     await this.login(USER_NAME, PASSWORD);
     await this.inquiry(partInfos);
-    console.log(this.data);
-    console.log(this.data.items[0].Availability);
     return this.data;
   }
 
@@ -41,14 +40,17 @@ export class KawasakiDashboard implements ManufacturerInterface {
       });
 
       this.page = await this.browser.newPage();
-    } catch (error) {
-      console.log("initialize Error===>", error);
+    } catch (Error) {
+      this.data = {
+        error: true,
+        message: Error.message,
+      };
     }
   }
 
   // Need to revisit login approach...
   public async login(userName: string, password: string) {
-    // await this.reLogin(COOKIE_PATH, userName, password);
+    await this.reLogin(COOKIE_PATH, userName, password);
     try {
       if (fs.existsSync(COOKIE_PATH)) {
         const exCookies = fs.readFileSync(COOKIE_PATH, "utf8");
@@ -62,8 +64,11 @@ export class KawasakiDashboard implements ManufacturerInterface {
         await this.reLogin(COOKIE_PATH, userName, password);
       }
       this.processData = true;
-    } catch (error) {
-      console.log("login error==>", error);
+    } catch (Error) {
+      this.data = {
+        error: true,
+        message: Error.message,
+      };
       await this.reLogin(COOKIE_PATH, this.username, this.password);
     }
   }
@@ -72,10 +77,13 @@ export class KawasakiDashboard implements ManufacturerInterface {
     if (!this.processData) {
       return;
     }
+
     try {
       let start = +new Date();
-      await this.page.goto(ITEM_INQUIRY_URL, { waitUntil: "networkidle2" });
+
+      await this.page.goto(ITEM_INQUIRY_URL, { waitUntil: "domcontentloaded" });
       await this.page.waitForTimeout(1000);
+
       for (let i = 0; i < partInfos.length; i++) {
         const no = i + 1;
         const element = "SearchItemNbr_" + no;
@@ -91,13 +99,16 @@ export class KawasakiDashboard implements ManufacturerInterface {
           partInfos[i].requestedQty
         );
       }
+
       let submitButton = await this.page.$x('//*[@id="btnSubmit"]');
       await Promise.all([
-        this.page.waitForNavigation(),
+        this.page.waitForNavigation({ waitUntil: "domcontentloaded" }),
         submitButton[0].click(),
       ]);
-      let responseGet: [string] = await this.page.evaluate(() => {
+
+      const responseGet: any = await this.page.evaluate(() => {
         function checkImgUrl(imgUrls) {
+          console.log("imgUrls==>", imgUrls);
           const imgName = [
             "diamond-green-1.gif",
             "square-red-1.gif",
@@ -108,6 +119,7 @@ export class KawasakiDashboard implements ManufacturerInterface {
           var statusName = "";
           for (let i = 0; i < imgName.length; i++) {
             const check_url = imgUrls.includes(imgName[i]);
+
             if (check_url == true) {
               statusName = status[i];
               break;
@@ -115,7 +127,176 @@ export class KawasakiDashboard implements ManufacturerInterface {
           }
           return statusName;
         }
+
+        function iterateResultRows(rows) : any {
+          console.log("rows==>", rows);
+          const tmpArr: any = new Array();
+          let jsonObject: any;
+          let finishedRows = 0;
+          try {
+            for (let index: number = 0; index < rows.length; index++) {
+              let tr = <HTMLTableRowElement>rows[index];
+              if (tr.cells.length > 0 && tr.cells[0] !== undefined) {
+                if (tr.cells[0].innerText === "Item Inquiry Results") {
+                  jsonObject = {};
+                  index++;
+                  tr = <HTMLTableRowElement>rows[index];
+                }
+                if (tr.cells[0].className === "TableHeader") {
+                  index++;
+                  tr = <HTMLTableRowElement>rows[index];
+                }
+                if (tr.cells[0].className === "TableErrorMessage") {
+                  index++;
+                  tr = <HTMLTableRowElement>rows[index];
+                }
+
+                if (tr.cells.length >= 4) {
+                  finishedRows++;
+                  for (
+                    let cellIndex: number = 0;
+                    cellIndex < tr.cells.length;
+                    cellIndex++
+                  ) {
+                    switch (tr.cells[cellIndex].innerText) {
+                      case "Item Number:":
+                        const itemNumber = tr.cells[cellIndex + 1].innerText;
+                        if (itemNumber.includes("Substitute:")) {
+                          const itmArr = itemNumber.split("\n");
+                          jsonObject.supersedePartNumber =
+                            itmArr[1].split(" ")[1];
+                          jsonObject.requestedPartNumber = itmArr[0];
+                        } else if (
+                          itemNumber.includes("  Fits What Vehicle Models")
+                        ) {
+                          jsonObject.requestedPartNumber = itemNumber.replace(
+                            "  Fits What Vehicle Models",
+                            ""
+                          );
+                          jsonObject.supersedePartNumber = null;
+                        } else {
+                          jsonObject.requestedPartNumber = itemNumber;
+                          jsonObject.requestedPartNumber = null;
+                        }
+                        break;
+                      case "Availability:":
+
+                        const tableFirstRows = <HTMLTableRowElement>(
+                          tr.cells[cellIndex + 1].querySelector(
+                            "table > tbody > tr:nth-child(1)"
+                          )
+                        );
+
+                        const totalCols = tableFirstRows && tableFirstRows.cells.length;
+                        let bo: string;
+                        let pkgQty: string;
+                        
+
+                        const tableRows = <HTMLTableRowElement>(
+                          tr.cells[cellIndex + 1].querySelector(
+                            "table > tbody > tr:nth-child(2)"
+                          )
+                        );
+
+                        if (totalCols >= 6) {
+                          bo = tableRows && tableRows.cells[4].innerText;
+                          pkgQty = tableRows && tableRows.cells[5].innerText;
+                        } else {
+                          bo = '';
+                          pkgQty = tableRows && tableRows.cells[4].innerText;
+                        }
+
+                        console.log("tableRows==>", tableRows);
+
+                        // L image
+                        const imgL =
+                          tableRows && tableRows.cells[1].querySelector("img");
+                        const imgLSrc = imgL && imgL.src;
+                        const imgL_status = checkImgUrl(imgLSrc);
+
+                        // R image
+                        const imgR =
+                          tableRows && tableRows.cells[2].querySelector("img");
+                        const imgRSrc = imgR && imgR.src;
+                        const imgR_status = checkImgUrl(imgRSrc);
+
+                        // D image
+                        const imgD =
+                          tableRows && tableRows.cells[3].querySelector("img");
+                        const imgDSrc = imgD && imgD.src;
+                        const imgD_status = checkImgUrl(imgDSrc);
+
+                        const availabilityJson = {
+                          quantity: tableRows && tableRows.cells[0].innerText,
+                          L: imgL_status,
+                          R: imgR_status,
+                          D: imgD_status,
+                          BO: bo,
+                          "Pkg Qty": pkgQty
+                        };
+                        jsonObject.Availability = availabilityJson;
+
+                        //console.log("Availability==>", tableRows);
+                        break;
+                      case "Description:":
+                        jsonObject.Description =
+                          tr.cells[cellIndex + 1].innerText;
+                        break;
+                      case "Status:":
+                        jsonObject.Status = tr.cells[cellIndex + 1].innerText;
+                        break;
+                      case "Dealer Price:":
+                        jsonObject.DealerPrice =
+                          tr.cells[cellIndex + 1].innerText;
+                        break;
+                      case "MSRP:":
+                        jsonObject.MSRP = tr.cells[cellIndex + 1].innerText;
+                        break;
+                      case "Inventory Type:":
+                        jsonObject.InventoryType =
+                          tr.cells[cellIndex + 1].innerText;
+                        break;
+                      case "Eligible for Exchange:":
+                        jsonObject.EligibleforExchange =
+                          tr.cells[cellIndex + 1].innerText;
+                        break;
+                      case "Dimensions LxWxHxG (In):":
+                        jsonObject.DimensionsLxWxHxG_In =
+                          tr.cells[cellIndex + 1].innerText;
+                        break;
+                      case "Weight(lb)/Volume(ci):":
+                        jsonObject.WeightVolume =
+                          tr.cells[cellIndex + 1].innerText;
+                        break;
+                      case "Vehicle Use:":
+                        jsonObject.VehicleUse =
+                          tr.cells[cellIndex + 1].innerText;
+                        break;
+                      case "Applicable Years:":
+                        jsonObject.ApplicableYears =
+                          tr.cells[cellIndex + 1].innerText;
+                        break;
+                    }
+                  }
+                  if (jsonObject && finishedRows >= 6) {
+                    tmpArr.push(jsonObject);
+                    finishedRows = 0;
+                    jsonObject = null;
+                  }
+                }
+              }
+            }
+            return tmpArr;
+          } catch (Error) {
+            console.log(Error);
+          }
+          console.log("tmpArr==>", tmpArr);
+          return null;
+        }
+
         let count = 0;
+        let validationMessages = new Array();
+        let errorMessages = new Array();
         let keyArray = new Array();
         let answerArray = new Array();
         let resultArray = new Array();
@@ -123,109 +304,67 @@ export class KawasakiDashboard implements ManufacturerInterface {
         let query = document.querySelectorAll(
           "#top > tbody > tr:nth-child(2) > td > table > tbody > tr:nth-child(1) > td > table:nth-child(1) > tbody > tr"
         );
+
         if (query) {
-          if (query.length > 0) {
-            for (let i = 0; i < query.length; i++) {
-              var cells = query[i].querySelectorAll("td.TableDataDark");
-              if (cells.length > 0) {
-                let key1 = (<HTMLTableCellElement>cells[0]).innerText
-                  .replace(":", "")
-                  .replace(/ /g, "");
-                let key2 = (<HTMLTableCellElement>cells[1]).innerText
-                  .replace(":", "")
-                  .replace(/ /g, "");
-                keyArray.push(key1);
-                keyArray.push(key2);
-                var lightCells = query[i].querySelectorAll("td.TableDataLight");
-                let val1 = (<HTMLTableCellElement>lightCells[0]).innerText
-                  .replace(/\r?\n|\r/g, "  ")
-                  .replace(/\r?\t|\r/g, "  ");
-                console.log("val1==>", val1);
-                if (val1.includes("Substitute:")) {
-                  const itmArr = val1.split(" ");
-                  console.log("itmArr==>", itmArr);
-                  answerArray.push(itmArr[3]);
-                } else if (val1.includes("  Fits What Vehicle Models")) {
-                  answerArray.push(
-                    val1.replace("  Fits What Vehicle Models", "")
-                  );
-                } else {
-                  answerArray.push(val1);
-                }
-                if (i % 10 == 6 && lightCells.length > 0) {
-                  let minJson = {};
-                  let minKey = new Array();
-                  let minVal = new Array();
-                  if (lightCells[1] !== null) {
-                    const tableBody = (<HTMLTableCellElement>(
-                      lightCells[1]
-                    )).querySelector("table > tbody");
-                    const tableRow =
-                      tableBody && tableBody.querySelectorAll("tr")[0];
-                    const tableCol =
-                      tableRow && tableRow.querySelectorAll("td");
-                    if (tableCol !== null) {
-                      for (let i = 0; i < tableCol.length; i++) {
-                        const newKey = tableCol[i].innerText.replace(/ /g, "");
-                        minKey.push(newKey);
-                      }
-                    }
-                    const tableSecondRow =
-                      tableBody && tableBody.querySelectorAll("tr")[1];
-                    const tableSecondCol =
-                      tableSecondRow && tableSecondRow.querySelectorAll("td");
-                    if (tableSecondCol !== null) {
-                      for (let i = 0; i < tableSecondCol.length; i++) {
-                        if (i == 1 || i == 2 || i == 3) {
-                          const img = tableSecondCol[i].querySelector("img");
-                          const imgSrc = img && img.src;
-                          const img_status = checkImgUrl(imgSrc);
-                          minVal.push(img_status);
-                        } else {
-                          const newVal = tableSecondCol[i].innerText;
-                          minVal.push(parseInt(newVal));
-                        }
-                      }
-                    }
-                  }
-                  for (let j = 0; j < minKey.length; j++) {
-                    minJson[minKey[j]] = minVal[j];
-                  }
-                  answerArray.push(minJson);
-                  minJson = {};
-                  minKey = [];
-                  minVal = [];
-                } else {
-                  answerArray.push(
-                    (<HTMLTableCellElement>lightCells[1]).innerText
-                      .replace(/\r?\n|\r/g, "  ")
-                      .replace(/\r?\t|\r/g, "  ")
-                  );
-                }
-              }
+          if (query.length > 0) {   
+            
+          }
+          // Process Error or validation messages
+          const queryValidation =
+            document.querySelectorAll(".TableErrorMessage");
+
+          if (queryValidation) {
+            queryValidation.forEach((element) => {
+              validationMessages.push({
+                message: (<HTMLTableCellElement>element).innerText,
+              });
+              this.validationFailed = true;
+            });
+            if (validationMessages.length > 0) {
+              resultArray.push(true);
+              resultArray.push({ validationMessages: validationMessages });
+            } else {
+              resultArray.push(false);
+              resultArray.push({ validationMessages: [] });
+            }
+          }
+
+          // Search functionality not working
+          const queryErrorMessage = document.querySelectorAll(".ErrorMessage");
+          if (queryErrorMessage) {
+            queryErrorMessage.forEach((element) => {
+              errorMessages.push({
+                message: (<HTMLTableCellElement>element).innerText,
+              });
+            });
+            if (queryErrorMessage.length > 0) {
+              resultArray.push(true);
+              resultArray.push({ errorMessages: errorMessages });
+            } else {
+              resultArray.push(false);
+              resultArray.push({ errorMessages: [] });
             }
           }
         }
-        for (let i = 0; i < keyArray.length; i++) {
-          json[keyArray[i]] = answerArray[i];
-          count = count + 1;
-          if (count == 12) {
-            count = 0;
-            resultArray.push(json);
-            json = {};
-          }
-        }
+
+        const items = iterateResultRows(query);
+            resultArray.push(items);
         return resultArray;
       });
+
+      console.log("responseGet==>", responseGet);
       this.data = {
-        error: false,
+        validationFailed: responseGet && responseGet[0],
+        validationMessages: responseGet && responseGet[1].validationMessages,
+        error: responseGet && responseGet[2],
+        errorMessages: responseGet && responseGet[3].errorMessages,
         message: SUCCESS_MESSAGE,
-        items: responseGet,
+        items: responseGet.slice(4)[0],
       };
       let Total_time = +new Date() - start;
       console.log("Total Process Time in milliseconds", Total_time);
       console.log("Process Completed Successfully");
-      await this.browser.close();
+      //await this.browser.close();
     } catch (Error) {
       this.data = {
         error: true,
@@ -235,18 +374,28 @@ export class KawasakiDashboard implements ManufacturerInterface {
     }
   }
   public async reLogin(path: string, username: string, password: string) {
-    await this.page.goto(BASE_URL);
+    try {
+      await this.page.goto(BASE_URL);
 
-    await this.page.type('input[name="username"]', username);
-    await this.page.type('input[name="userPassword"]', password);
+      await this.page.type('input[name="username"]', username);
+      await this.page.type('input[name="userPassword"]', password);
 
-    let signInButton = await this.page.$x('//*[@id="submit1"]');
-    await Promise.all([this.page.waitForNavigation(), signInButton[0].click()]);
+      let signInButton = await this.page.$x('//*[@id="submit1"]');
+      await Promise.all([
+        this.page.waitForNavigation({ waitUntil: "domcontentloaded" }),
+        signInButton[0].click(),
+      ]);
 
-    const cookies = await this.page.cookies();
-    const cookieJson = JSON.stringify(cookies);
-    fs.writeFileSync(path, cookieJson);
-    await this.inquiry(this.arr);
+      const cookies = await this.page.cookies();
+      const cookieJson = JSON.stringify(cookies);
+      fs.writeFileSync(path, cookieJson);
+      await this.inquiry(this.arr);
+    } catch (Error) {
+      this.data = {
+        error: true,
+        message: Error.message,
+      };
+    }
   }
 
   public static transformJSON2GraphQL(
@@ -254,7 +403,6 @@ export class KawasakiDashboard implements ManufacturerInterface {
     inputData: types.QueryInput
   ): types.OEMAvailabilityResponse {
     // Leverage this method to transform dashboard json response to GraphQL response
-    // const graphQLResponse = jsonResponse.items[0];
     let arrayList = new Array();
     let errorResult;
     if (jsonResponse.items && jsonResponse.items.length > 0) {
@@ -281,12 +429,13 @@ export class KawasakiDashboard implements ManufacturerInterface {
       }
     } else {
       errorResult = {
-        code: "100",
-        message: "JSON item is empty or null",
+        code: "500",
+        message: "Internal Server Error",
       };
-    }
+    }    
     return {
       result: arrayList,
+      responseValidation:jsonResponse.validationFailed ? jsonResponse.validationMessages: [],
       responseError: errorResult,
     };
   }
