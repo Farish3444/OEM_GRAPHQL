@@ -4,11 +4,10 @@ import fs from "fs";
 import * as types from "../../common/types";
 
 const BASE_URL = "https://www.k-dealer.com/Site/_mem_bin/DealerLogin.asp";
-const MENU_URL = "https://www.k-dealer.com/site/Home/menu_partsaccessories.asp";
 const ITEM_INQUIRY_URL =
   "https://www.k-dealer.com/Site/IIItemInquiry/IIItemInquiry.asp";
 //This should be moved to S3 or other location...
-const COOKIE_PATH = "../kawasaki_cookies.json";
+const COOKIE_PATH = "../";
 const USER_NAME = "STEVEBB";
 const PASSWORD = "BBVPS62";
 const SUCCESS_MESSAGE = "Kawasaki Dashboard - Process completed successfully";
@@ -27,6 +26,11 @@ export class KawasakiDashboard implements ManufacturerInterface {
   private processData: boolean = false;
   public imgUrl: any;
   private validationFailed: boolean = false;
+  private cookieFile: string = '';
+
+  constructor() {
+     this.cookieFile = COOKIE_PATH + this.GetCookieFileName();
+  }
 
   public async crawl(partInfos: [types.OEMPartInfo]) {
     this.arr = partInfos;
@@ -40,18 +44,18 @@ export class KawasakiDashboard implements ManufacturerInterface {
   public async initialize() {
     try {
       this.browser = await puppeteer.launch({
-        headless: true,
+        headless: false,
         args: [
-          '--no-sandbox',
-          '--disable-dev-shm-usage', // <-- add this one
-          ],
+          "--no-sandbox",
+          "--disable-dev-shm-usage", // <-- add this one
+        ],
       });
 
       this.page = await this.browser.newPage();
     } catch (Error) {
       this.data = {
         code: ERROR_CODE,
-        identifier: '',
+        identifier: "",
         message: ERROR_MESSAGE,
       };
     }
@@ -59,8 +63,9 @@ export class KawasakiDashboard implements ManufacturerInterface {
 
   public async login(username: string, password: string): Promise<any> {
     try {
-      if (fs.existsSync(COOKIE_PATH)) {
-        const exCookies = fs.readFileSync(COOKIE_PATH, "utf8");
+      console.log("login this.cookieFile==>", this.cookieFile)
+      if (fs.existsSync(this.cookieFile)) {
+        const exCookies = fs.readFileSync(this.cookieFile, "utf8");
 
         if (exCookies) {
           const deserializedCookies = JSON.parse(exCookies);
@@ -69,13 +74,17 @@ export class KawasakiDashboard implements ManufacturerInterface {
         this.processData = true;
         return true;
       } else {
-        return await this.reLogin(COOKIE_PATH, username, password);
+        return await this.reLogin(this.cookieFile, username, password);
       }
     } catch (Error) {
       this.data = {
-        code: ERROR_CODE,
-        identifier: '',
-        message: ERROR_MESSAGE,
+        errorMessages: [{
+          code: ERROR_CODE,
+          identifier: "",
+          message: ERROR_MESSAGE,
+        }],
+        message: SUCCESS_MESSAGE,
+        items: [],
       };
       return await this.reLogin(COOKIE_PATH, username, password);
     }
@@ -90,7 +99,7 @@ export class KawasakiDashboard implements ManufacturerInterface {
       let start = +new Date();
       await this.page.goto(ITEM_INQUIRY_URL, { waitUntil: "domcontentloaded" });
       await this.page.waitForTimeout(1000);
-      
+
       for (let i = 0; i < arr.length; i++) {
         const no = i + 1;
         const element = "SearchItemNbr_" + no;
@@ -112,8 +121,6 @@ export class KawasakiDashboard implements ManufacturerInterface {
         this.page.waitForNavigation({ waitUntil: "domcontentloaded" }),
         submitButton[0].click(),
       ]);
-
-      
 
       const responseGet: any = await this.page.evaluate((arr) => {
         function checkImgUrl(imgUrls) {
@@ -174,9 +181,7 @@ export class KawasakiDashboard implements ManufacturerInterface {
                             itmArr[1].split(" ")[1];
                           jsonObject.requestedPartNumber = itmArr[0];
                         } else if (
-                          itemNumber.includes(
-                            "  Fits What Vehicle Models"
-                          )
+                          itemNumber.includes("  Fits What Vehicle Models")
                         ) {
                           jsonObject.requestedPartNumber = itemNumber.replace(
                             "  Fits What Vehicle Models",
@@ -312,7 +317,7 @@ export class KawasakiDashboard implements ManufacturerInterface {
           if (queryValidation) {
             queryValidation.forEach((element) => {
               const msg = (<HTMLTableCellElement>element).innerText;
-              let identifier = '';
+              let identifier = "";
               arr.forEach((element) => {
                 if (msg.includes(element.partNumber)) {
                   identifier = element.partNumber;
@@ -322,7 +327,7 @@ export class KawasakiDashboard implements ManufacturerInterface {
               validationMessages.push({
                 message: msg,
                 code: 200,
-                identifier: identifier
+                identifier: identifier,
               });
               this.validationFailed = true;
             });
@@ -340,7 +345,7 @@ export class KawasakiDashboard implements ManufacturerInterface {
               errorMessages.push({
                 message: (<HTMLTableCellElement>element).innerText,
                 code: 500,
-                identifier: ''
+                identifier: "",
               });
             });
             if (queryErrorMessage.length > 0) {
@@ -349,7 +354,7 @@ export class KawasakiDashboard implements ManufacturerInterface {
               resultArray.push({ errorMessages: [] });
             }
           }
-          
+
           //Crawl Search result
           const items = iterateResultRows(query);
           resultArray.push(items);
@@ -360,19 +365,26 @@ export class KawasakiDashboard implements ManufacturerInterface {
 
       console.log("responseGet==>", responseGet);
       this.data = {
-        errorMessages: responseGet && [...responseGet[1].errorMessages, ...responseGet[0].validationMessages],
+        errorMessages: responseGet && [
+          ...responseGet[1].errorMessages,
+          ...responseGet[0].validationMessages,
+        ],
         message: SUCCESS_MESSAGE,
         items: responseGet[2],
       };
       let Total_time = +new Date() - start;
       console.log("Total Process Time in milliseconds", Total_time);
       console.log("Process Completed Successfully");
-      //await this.browser.close();
+      await this.browser.close();
     } catch (Error) {
       this.data = {
-        code: ERROR_CODE,
-        identifier: '',
-        message: Error,
+        errorMessages: [{
+          code: ERROR_CODE,
+          identifier: "",
+          message: ERROR_MESSAGE,
+        }],
+        message: SUCCESS_MESSAGE,
+        items: [],
       };
       await this.browser.close();
     }
@@ -395,22 +407,22 @@ export class KawasakiDashboard implements ManufacturerInterface {
         signInButton[0].click(),
       ]);
 
-      const queryErrorMessages = await this.page.evaluate(() => {
+      const queryErrorMessages = await this.page.evaluate(({ERROR_CODE, ERROR_MESSAGE}) => {
         const errorMessages: any = new Array();
         const queryErrorMessage = document.querySelectorAll(".LoginError");
 
         if (queryErrorMessage) {
           queryErrorMessage.forEach((element) => {
             errorMessages.push({
-              message: (<HTMLTableCellElement>element).innerText,
+              message: ERROR_MESSAGE,
               code: ERROR_CODE,
-              identifier: ''
+              identifier: "",
             });
           });
         }
         return errorMessages;
-      });
-
+      }, {ERROR_CODE, ERROR_MESSAGE});
+      console.log("reLogin queryErrorMessages==>", queryErrorMessages);
       if (queryErrorMessages.length > 0) {
         this.data = {
           errorMessages: queryErrorMessages,
@@ -422,15 +434,22 @@ export class KawasakiDashboard implements ManufacturerInterface {
         this.processData = true;
         const cookies = await this.page.cookies();
         const cookieJson = JSON.stringify(cookies);
-        fs.writeFileSync(COOKIE_PATH, cookieJson);
+        console.log("reLogin this.cookieFile==>", this.cookieFile)
+        fs.writeFileSync(this.cookieFile, cookieJson);
         await this.inquiry(this.arr);
         return true;
       }
     } catch (Error) {
       this.data = {
-        error: true,
-        message: Error.message,
+        errorMessages: [{
+          code: ERROR_CODE,
+          identifier: "",
+          message: ERROR_MESSAGE,
+        }],
+        message: SUCCESS_MESSAGE,
+        items: [],
       };
+      await this.browser.close();
     }
   }
 
@@ -453,7 +472,7 @@ export class KawasakiDashboard implements ManufacturerInterface {
             ? jsonResponse.items[i].Availability.Qty
             : 0,
           // leadTime: graphQLResponse.ApplicableYears,
-          supersededPartNumber:jsonResponse.items[i].supersededPartNumber,
+          supersededPartNumber: jsonResponse.items[i].supersededPartNumber,
           requestedPartNumber: inputData.partInfos[i].partNumber,
           requestedQty: inputData.partInfos[i].requestedQty,
           requestedManufacturerType: inputData.manufacturerType.toString(),
@@ -463,15 +482,34 @@ export class KawasakiDashboard implements ManufacturerInterface {
     } else {
       errorResult = {
         code: ERROR_CODE,
-        identifier: '',
+        identifier: "",
         message: ERROR_MESSAGE,
       };
-    }    
+    }
     return {
       result: arrayList,
-      responseValidation:jsonResponse.validationFailed ? jsonResponse.validationMessages: [],
+      responseValidation: jsonResponse.validationFailed
+        ? jsonResponse.validationMessages
+        : [],
       responseError: errorResult,
     };
+  }
+
+  private GetCookieFileName(): string {
+    let date_ob = new Date();
+
+    // current date
+    // adjust 0 before single digit date
+    let date = ("0" + date_ob.getDate()).slice(-2);
+
+    // current month
+    let month = ("0" + (date_ob.getMonth() + 1)).slice(-2);
+
+    // current year
+    let year = date_ob.getFullYear();
+
+    // prints date in YYYY-MM-DD format
+    return "kawasaki-" + year + month + date + ".json";
   }
 }
 
