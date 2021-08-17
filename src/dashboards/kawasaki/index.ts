@@ -452,16 +452,15 @@ export class KawasakiDashboard implements ManufacturerInterface {
       await this.browser.close();
     }
   }
-
   public static transformJSON2GraphQL(
     jsonResponse: any,
     inputData: types.QueryInput
   ): types.OEMAvailabilityResponse {
     // Leverage this method to transform dashboard json response to GraphQL response
     let arrayList = new Array();
-    let errorResult;
-    if (jsonResponse.items && jsonResponse.items.length > 0) {
-      for (let i = 0; i < jsonResponse.items.length; i++) {
+    // let errorResult = new Array();
+    // if (jsonResponse.items && jsonResponse.items.length > 0) {
+      for (let i = 0; i < jsonResponse?.items.length; i++) {
         let uniqueTimeStamp = new Date();
         let uniqueID = Math.floor(Date.now() + Math.random() * 1000);
         arrayList.push({
@@ -479,19 +478,9 @@ export class KawasakiDashboard implements ManufacturerInterface {
           timeStamp: uniqueTimeStamp,
         });
       }
-    } else {
-      errorResult = {
-        code: ERROR_CODE,
-        identifier: "",
-        message: ERROR_MESSAGE,
-      };
-    }
     return {
       result: arrayList,
-      responseValidation: jsonResponse.validationFailed
-        ? jsonResponse.validationMessages
-        : [],
-      responseError: errorResult,
+      responseErrors: jsonResponse?.errorMessages,
     };
   }
 

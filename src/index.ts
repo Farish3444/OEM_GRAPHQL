@@ -6,7 +6,6 @@ const {
 import { readFileSync } from "fs";
 import { resolve } from "path";
 import * as types from "./common/types";
-import * as agql from "./common/graphqlConfig";
 import { KawasakiDashboard, kawasakiDashboard, yamahaDashboard, YamahaDashboard } from "./dashboards";
 
 const typeDefs = gql(
@@ -28,7 +27,7 @@ const resolvers: any = {
           console.log("Calling Kawasaki dashboard...");
           let jsonResponseKawasaki = await context.kawasakiDashboard.crawl(
             args.input.partInfos
-          );          
+          );                    
           // transform json response to GraphQL specs
           let graphQLResponseKawasaki = KawasakiDashboard.transformJSON2GraphQL(
             jsonResponseKawasaki,
@@ -61,44 +60,6 @@ const resolvers: any = {
             },
           };
       }
-      //   let manufacturerType = args.input.manufacturerType.toString();
-      //   if (
-      //     types.ManufacturerType[manufacturerType] ==
-      //     types.ManufacturerType.KAWASAKI
-      //   ) {
-      //     console.log("Calling Kawasaki dashboard...");
-      //     let jsonResponse = await context.kawasakiDashboard.crawl(
-      //       args.input.partInfos
-      //     );
-      //     // transform json response to GraphQL specs
-      //     let graphQLResponse = KawasakiDashboard.transformJSON2GraphQL(
-      //       jsonResponse,
-      //       args.input
-      //     );
-      //     return graphQLResponse;
-      //   } else if (
-      //     types.ManufacturerType[manufacturerType] ==
-      //     types.ManufacturerType.YAMAHA
-      //   ) {
-      //     console.log("Calling Yamaha dashboard...");
-      //     let jsonResponse = await context.yamahaDashboard.crawl(
-      //       args.input.partInfos
-      //     );
-      //     console.log("jsonResponse", jsonResponse);
-      //       // transform json response to GraphQL specs
-      //       let graphQLResponse = YamahaDashboard.transformJSON2GraphQL(
-      //         jsonResponse,
-      //         args.input
-      //       );
-      //       return graphQLResponse;
-      //   } else {
-      //     return {
-      //       responseError: {
-      //         code: "100",
-      //         message: args.input.manufacturerType + " Not Supported Yet...",
-      //       },
-      //     };
-      //   }
     },
   },
 };
