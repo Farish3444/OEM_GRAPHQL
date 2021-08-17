@@ -56,8 +56,12 @@ export interface ResponseError {
   message: string;
 }
 
+export interface ResponseValidation {
+  message: string;
+}
 // interface for OEMAvailabilityResponse
 export interface OEMAvailabilityResponse {
   result?: AvailabilityInfo[];
+  responseValidation?: ResponseValidation[];
   responseError?: ResponseError;
 }

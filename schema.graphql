@@ -42,10 +42,13 @@ type ResponseError {
   code: String!
   message: String
 }
-
+type ResponseValidation {
+  message: String
+}
 "The OEM Availability Response Object"
 type OEMAvailabilityResponse {
   result: [AvailabilityInfo]
+  responseValidation: [ResponseValidation]
   responseError: ResponseError
 }
 
