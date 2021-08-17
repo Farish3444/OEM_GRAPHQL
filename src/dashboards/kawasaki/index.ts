@@ -28,12 +28,12 @@ export class KawasakiDashboard implements ManufacturerInterface {
   public imgUrl: any;
   private validationFailed: boolean = false;
 
-  public async crawl(arr: any) {
-    this.arr = arr;
+  public async crawl(partInfos: [types.OEMPartInfo]) {
+    this.arr = partInfos;
     await this.initialize();
     const success = await this.login(USER_NAME, PASSWORD);
     if (success) {
-      await this.inquiry(arr);
+      await this.inquiry(partInfos);
     }
     return this.data;
   }
@@ -116,9 +116,7 @@ export class KawasakiDashboard implements ManufacturerInterface {
       
 
       const responseGet: any = await this.page.evaluate((arr) => {
-        console.log("responseGet arr==>", arr);
         function checkImgUrl(imgUrls) {
-          console.log("imgUrls==>", imgUrls);
           const imgName = [
             "diamond-green-1.gif",
             "square-red-1.gif",
