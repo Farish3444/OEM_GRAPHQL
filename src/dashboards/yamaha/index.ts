@@ -274,7 +274,7 @@ export class YamahaDashboard implements ManufacturerInterface  {
     }
     return {
       result: arrayList,
-      responseError: errorResult,
+      responseErrors: errorResult,
     };
   }
 }

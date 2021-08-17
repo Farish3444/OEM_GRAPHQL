@@ -40,16 +40,14 @@ type AvailabilityInfo {
 "The response error object that includes code and message properties"
 type ResponseError {
   code: String!
+  identifier: String
   message: String
 }
-type ResponseValidation {
-  message: String
-}
+
 "The OEM Availability Response Object"
 type OEMAvailabilityResponse {
   result: [AvailabilityInfo]
-  responseValidation: [ResponseValidation]
-  responseError: ResponseError
+  responseErrors: [ResponseError]
 }
 
 "The OEMPartInfo request input object"
