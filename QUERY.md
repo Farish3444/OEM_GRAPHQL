@@ -21,8 +21,9 @@ query BB_OEM {
     responseValidation {
       message
     }
-    responseError {
+   responseErrors{
       code
+      identifier
       message
     }
   }
@@ -47,8 +48,37 @@ query BB_OEM {
       requestedManufacturerType
       supersededPartNumber
     }
-    responseError {
+   responseErrors{
       code
+      identifier
+      message
+    }
+  }
+}
+
+
+# POLARIS Query
+query BB_OEM {
+  queryOEMAvailability (input: {
+    manufacturerType: POLARIS,
+    partInfos: [
+  {partNumber:"5437778", requestedQty: 5}
+   
+    ]
+  }) {
+    result {
+      id
+      quantity
+      status
+      statusMessage
+      requestedPartNumber
+      requestedQty
+      requestedManufacturerType
+      supersededPartNumber
+    }
+    responseErrors{
+      code
+      identifier
       message
     }
   }
