@@ -7,12 +7,14 @@ const BASE_URL = "https://www.polarisdealers.com/";
 const ITEM_INQUIRY_URL =
     "https://home.polarisportal.com/Shared/Navigate?url=https%3A%2F%2Fwww.polarisdealers.com%2Fsecpages%2FDotNetRedirect.asp%3FRedirect%3D%2FDealerExtranet%2FPurePolaris%2FPartDetailSearch%2FDefault.aspx";
 //This should be moved to S3 or other location...
-const COOKIE_PATH = "../polaris_cookies.json";
+const COOKIE_PATH = "../";
 const USER_NAME = "sisenhower@bikebandit.com";
 const PASSWORD = "BBVPs1962!";
 const DEALER_ID = "2125800";
 const SUCCESS_MESSAGE = "Polaris Dashboard - Process completed successfully";
 const ERROR_MESSAGE = "Polaris Dashboard - Process failed!";
+const VALIDATIN_CODE = 200;
+const ERROR_CODE = 500;
 
 export class PolarisDashboard implements ManufacturerInterface {
   public username: any;
@@ -23,10 +25,15 @@ export class PolarisDashboard implements ManufacturerInterface {
   private page: any;
   private processData: boolean = false;
   public imgUrl: any;
-  private validationFailed: boolean = false;
+  private cookieFile: string = "";
+
+  constructor() {
+    this.cookieFile = COOKIE_PATH + "polarish-cookie.json";
+  }
 
   // Need to return the JSON data back to GraphQL
   public async crawl(partInfos: [types.OEMPartInfo]) {
+    this.arr = partInfos;
     await this.initialize();
     await this.login(USER_NAME, PASSWORD, DEALER_ID);
     await this.inquiry(partInfos);
@@ -36,7 +43,7 @@ export class PolarisDashboard implements ManufacturerInterface {
   public async initialize() {
     try {
       this.browser = await puppeteer.launch({
-        headless: false,
+        headless: true,
       });
 
       this.page = await this.browser.newPage();
@@ -50,18 +57,16 @@ export class PolarisDashboard implements ManufacturerInterface {
 
   // Need to revisit login approach...
   public async login(userName: string, password: string, dealerId: string) {
-    await this.reLogin(COOKIE_PATH, userName, password, dealerId);
+    
     try {
-      if (fs.existsSync(COOKIE_PATH)) {
-        const exCookies = fs.readFileSync(COOKIE_PATH, "utf8");
-        console.log("cookie login");
+      if (fs.existsSync(this.cookieFile)) {
+        const exCookies = fs.readFileSync(this.cookieFile, "utf8");
         if (exCookies) {
           const deserializedCookies = JSON.parse(exCookies);
           await this.page.setCookie(...deserializedCookies);
-          const cookies = await this.page.cookies();
         }
       } else {
-        await this.reLogin(COOKIE_PATH, userName, password, dealerId);
+        await this.reLogin(this.cookieFile, userName, password, dealerId);
       }
       this.processData = true;
     } catch (Error) {
@@ -74,7 +79,7 @@ export class PolarisDashboard implements ManufacturerInterface {
         message: SUCCESS_MESSAGE,
         items: [],
       };
-      await this.reLogin(COOKIE_PATH, this.username, this.password, dealerId);
+      await this.reLogin(this.cookieFile, userName, password, dealerId);
     }
   }
 
@@ -82,14 +87,13 @@ export class PolarisDashboard implements ManufacturerInterface {
     if (!this.processData) {
       return;
     }
+    
     try {
       const tmpArr: any = new Array();
       let jsonObject: any;
       let start = +new Date();
-      var data = [];
       for (let d = 0; d < partInfos.length; d++) {
         await this.page.goto(ITEM_INQUIRY_URL);
-        // await this.page.goto("http://localhost:3000/dev/dist/js/polaris.html");
         await this.page.waitForTimeout(2000);
         await this.page.type('input[id="ctl00_cphDealerDefault_ucNavigationControl_txtItemID"]', partInfos[d].partNumber, { delay: 200 });
         let findButton = await this.page.$x('//*[@id="ctl00_cphDealerDefault_ucNavigationControl_btnFind"]');
@@ -160,6 +164,11 @@ export class PolarisDashboard implements ManufacturerInterface {
       };
     } catch (error) {
       console.log("inquiry Error==>", error);
+      const url = this.page.url();
+      if (url.includes("Support/Logoff.asp")) {
+        fs.unlinkSync(this.cookieFile);
+        return this.crawl(this.arr);
+      }
       this.data = {
         errorMessages: [{
           code: '',
