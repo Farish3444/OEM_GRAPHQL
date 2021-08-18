@@ -7,6 +7,7 @@ import { readFileSync } from "fs";
 import { resolve } from "path";
 import * as types from "./common/types";
 import { KawasakiDashboard, kawasakiDashboard, yamahaDashboard, YamahaDashboard, polarisDashboard, PolarisDashboard  } from "./dashboards";
+import { config } from "./common/graphqlConfig";
 
 const typeDefs = gql(
   readFileSync(resolve(__dirname, "../schema.graphql"), { encoding: "utf8" })
@@ -90,6 +91,8 @@ try {
       }),
     ],
   });
+
+  // const server = new ApolloServer(config);
 
   const port = process.env.PORT || 4000;
   server.listen({ port }).then(({ url }) => {
