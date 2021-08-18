@@ -22,14 +22,12 @@ export class KawasakiDashboard implements ManufacturerInterface {
   public data: any;
   private browser: any;
   private page: any;
-  private context: any;
   private processData: boolean = false;
   public imgUrl: any;
-  private validationFailed: boolean = false;
-  private cookieFile: string = '';
+  private cookieFile: string = "";
 
   constructor() {
-     this.cookieFile = COOKIE_PATH + this.GetCookieFileName();
+    this.cookieFile = COOKIE_PATH + "kawasaki-cookie.json";
   }
 
   public async crawl(partInfos: [types.OEMPartInfo]) {
@@ -44,7 +42,7 @@ export class KawasakiDashboard implements ManufacturerInterface {
   public async initialize() {
     try {
       this.browser = await puppeteer.launch({
-        headless: false,
+        headless: true,
         args: [
           "--no-sandbox",
           "--disable-dev-shm-usage", // <-- add this one
@@ -63,7 +61,6 @@ export class KawasakiDashboard implements ManufacturerInterface {
 
   public async login(username: string, password: string): Promise<any> {
     try {
-      console.log("login this.cookieFile==>", this.cookieFile)
       if (fs.existsSync(this.cookieFile)) {
         const exCookies = fs.readFileSync(this.cookieFile, "utf8");
 
@@ -78,11 +75,13 @@ export class KawasakiDashboard implements ManufacturerInterface {
       }
     } catch (Error) {
       this.data = {
-        errorMessages: [{
-          code: ERROR_CODE,
-          identifier: "",
-          message: ERROR_MESSAGE,
-        }],
+        errorMessages: [
+          {
+            code: ERROR_CODE,
+            identifier: "",
+            message: ERROR_MESSAGE,
+          },
+        ],
         message: SUCCESS_MESSAGE,
         items: [],
       };
@@ -122,7 +121,7 @@ export class KawasakiDashboard implements ManufacturerInterface {
         submitButton[0].click(),
       ]);
 
-      const responseGet: any = await this.page.evaluate((arr) => {
+      const responseGet: any = await this.page.evaluate(({ arr, ERROR_CODE, ERROR_MESSAGE }) => {
         function checkImgUrl(imgUrls) {
           const imgName = [
             "diamond-green-1.gif",
@@ -314,6 +313,8 @@ export class KawasakiDashboard implements ManufacturerInterface {
           const queryValidation =
             document.querySelectorAll(".TableErrorMessage");
 
+            console.log("before queryValidation")
+
           if (queryValidation) {
             queryValidation.forEach((element) => {
               const msg = (<HTMLTableCellElement>element).innerText;
@@ -326,10 +327,9 @@ export class KawasakiDashboard implements ManufacturerInterface {
               });
               validationMessages.push({
                 message: msg,
-                code: 200,
+                code: VALIDATIN_CODE,
                 identifier: identifier,
               });
-              this.validationFailed = true;
             });
             if (validationMessages.length > 0) {
               resultArray.push({ validationMessages: validationMessages });
@@ -344,7 +344,7 @@ export class KawasakiDashboard implements ManufacturerInterface {
             queryErrorMessage.forEach((element) => {
               errorMessages.push({
                 message: (<HTMLTableCellElement>element).innerText,
-                code: 500,
+                code: ERROR_CODE,
                 identifier: "",
               });
             });
@@ -354,14 +354,14 @@ export class KawasakiDashboard implements ManufacturerInterface {
               resultArray.push({ errorMessages: [] });
             }
           }
-
+          console.log("after queryValidation")
           //Crawl Search result
           const items = iterateResultRows(query);
           resultArray.push(items);
         }
 
         return resultArray;
-      }, arr);
+      }, { arr, ERROR_CODE, ERROR_MESSAGE });
 
       console.log("responseGet==>", responseGet);
       this.data = {
@@ -377,12 +377,20 @@ export class KawasakiDashboard implements ManufacturerInterface {
       console.log("Process Completed Successfully");
       await this.browser.close();
     } catch (Error) {
+      console.log(Error);
+      const url = this.page.url();
+      if (url.includes("DealerLogin.asp?bolTimeout=true")) {
+        fs.unlinkSync(this.cookieFile);
+        return this.crawl(this.arr);
+      }
       this.data = {
-        errorMessages: [{
-          code: ERROR_CODE,
-          identifier: "",
-          message: ERROR_MESSAGE,
-        }],
+        errorMessages: [
+          {
+            code: ERROR_CODE,
+            identifier: "",
+            message: ERROR_MESSAGE,
+          },
+        ],
         message: SUCCESS_MESSAGE,
         items: [],
       };
@@ -397,7 +405,6 @@ export class KawasakiDashboard implements ManufacturerInterface {
   ): Promise<any> {
     try {
       await this.page.goto(BASE_URL);
-
       await this.page.type('input[name="username"]', username);
       await this.page.type('input[name="userPassword"]', password);
 
@@ -407,22 +414,25 @@ export class KawasakiDashboard implements ManufacturerInterface {
         signInButton[0].click(),
       ]);
 
-      const queryErrorMessages = await this.page.evaluate(({ERROR_CODE, ERROR_MESSAGE}) => {
-        const errorMessages: any = new Array();
-        const queryErrorMessage = document.querySelectorAll(".LoginError");
+      const queryErrorMessages = await this.page.evaluate(
+        ({ ERROR_CODE, ERROR_MESSAGE }) => {
+          const errorMessages: any = new Array();
+          const queryErrorMessage = document.querySelectorAll(".LoginError");
 
-        if (queryErrorMessage) {
-          queryErrorMessage.forEach((element) => {
-            errorMessages.push({
-              message: ERROR_MESSAGE,
-              code: ERROR_CODE,
-              identifier: "",
+          if (queryErrorMessage) {
+            queryErrorMessage.forEach((element) => {
+              errorMessages.push({
+                message: ERROR_MESSAGE,
+                code: ERROR_CODE,
+                identifier: "",
+              });
             });
-          });
-        }
-        return errorMessages;
-      }, {ERROR_CODE, ERROR_MESSAGE});
-      console.log("reLogin queryErrorMessages==>", queryErrorMessages);
+          }
+          return errorMessages;
+        },
+        { ERROR_CODE, ERROR_MESSAGE }
+      );
+
       if (queryErrorMessages.length > 0) {
         this.data = {
           errorMessages: queryErrorMessages,
@@ -434,18 +444,21 @@ export class KawasakiDashboard implements ManufacturerInterface {
         this.processData = true;
         const cookies = await this.page.cookies();
         const cookieJson = JSON.stringify(cookies);
-        console.log("reLogin this.cookieFile==>", this.cookieFile)
+
         fs.writeFileSync(this.cookieFile, cookieJson);
         await this.inquiry(this.arr);
         return true;
       }
     } catch (Error) {
+      console.log("reLogin Error==>", Error);
       this.data = {
-        errorMessages: [{
-          code: ERROR_CODE,
-          identifier: "",
-          message: ERROR_MESSAGE,
-        }],
+        errorMessages: [
+          {
+            code: ERROR_CODE,
+            identifier: "",
+            message: ERROR_MESSAGE,
+          },
+        ],
         message: SUCCESS_MESSAGE,
         items: [],
       };
@@ -460,45 +473,28 @@ export class KawasakiDashboard implements ManufacturerInterface {
     let arrayList = new Array();
     // let errorResult = new Array();
     // if (jsonResponse.items && jsonResponse.items.length > 0) {
-      for (let i = 0; i < jsonResponse?.items.length; i++) {
-        let uniqueTimeStamp = new Date();
-        let uniqueID = Math.floor(Date.now() + Math.random() * 1000);
-        arrayList.push({
-          id: uniqueID,
-          status: jsonResponse.items[i].Status,
-          statusMessage: jsonResponse.items[i].Description,
-          quantity: jsonResponse.items[i].Availability.Qty
-            ? jsonResponse.items[i].Availability.Qty
-            : 0,
-          // leadTime: graphQLResponse.ApplicableYears,
-          supersededPartNumber: jsonResponse.items[i].supersededPartNumber,
-          requestedPartNumber: inputData.partInfos[i].partNumber,
-          requestedQty: inputData.partInfos[i].requestedQty,
-          requestedManufacturerType: inputData.manufacturerType.toString(),
-          timeStamp: uniqueTimeStamp,
-        });
-      }
+    for (let i = 0; i < jsonResponse?.items.length; i++) {
+      let uniqueTimeStamp = new Date();
+      let uniqueID = Math.floor(Date.now() + Math.random() * 1000);
+      arrayList.push({
+        id: uniqueID,
+        status: jsonResponse.items[i].Status,
+        statusMessage: jsonResponse.items[i].Description,
+        quantity: jsonResponse.items[i].Availability.Qty
+          ? jsonResponse.items[i].Availability.Qty
+          : 0,
+        // leadTime: graphQLResponse.ApplicableYears,
+        supersededPartNumber: jsonResponse.items[i].supersededPartNumber,
+        requestedPartNumber: inputData.partInfos[i].partNumber,
+        requestedQty: inputData.partInfos[i].requestedQty,
+        requestedManufacturerType: inputData.manufacturerType.toString(),
+        timeStamp: uniqueTimeStamp,
+      });
+    }
     return {
       result: arrayList,
       responseErrors: jsonResponse?.errorMessages,
     };
-  }
-
-  private GetCookieFileName(): string {
-    let date_ob = new Date();
-
-    // current date
-    // adjust 0 before single digit date
-    let date = ("0" + date_ob.getDate()).slice(-2);
-
-    // current month
-    let month = ("0" + (date_ob.getMonth() + 1)).slice(-2);
-
-    // current year
-    let year = date_ob.getFullYear();
-
-    // prints date in YYYY-MM-DD format
-    return "kawasaki-" + year + month + date + ".json";
   }
 }
 
