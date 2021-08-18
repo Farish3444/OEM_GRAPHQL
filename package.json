@@ -21,6 +21,7 @@
     "tedious": "^11.4.0"
   },
   "devDependencies": {
+    "@types/tedious": "^4.0.5",
     "@typescript-eslint/eslint-plugin": "^4.29.0",
     "@typescript-eslint/parser": "^4.29.0",
     "chai": "^4.2.0",
