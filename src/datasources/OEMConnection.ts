@@ -3,17 +3,15 @@ import {Connection} from "tedious";
 import { Request } from "tedious";
 
 const sqlConfig = {
-    user: 'OEMAvailability',
-    password: 'dsfhg#4534523!sdfg',
-    database: 'CPI',
-    server: '10.50.21.163',
-    pool: {
-        max: 10,
-        min: 0,
-        idleTimeoutMillis: 30000
+    server: "10.50.21.163",
+    authentication: {
+        type: "default",
+        options: {
+            userName: "OEMAvailability",
+            password: "dsfhg#4534523!sdfg",
+            database: 'CPI'
+       }
     },
-    options: {
-    }
 }
 
 export class OEMConnection {
@@ -28,7 +26,9 @@ export class OEMConnection {
                 if(text) {
                     console.log('Error: ', text);
                 }
-                var sql ="SELECT * FROM dbo.SkuStockPricing"
+                const table = '[CPI].[dbo].[SkuStockPricing]';
+                // var sql =`SELECT * FROM  ${table}`;
+                var sql =`SELECT * FROM  ${table} where SkuID='1441474'`;
                 var request = new Request(sql, function(err) {
                     if (err) {
                     console.log(err);
