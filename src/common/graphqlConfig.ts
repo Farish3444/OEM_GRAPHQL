@@ -1,4 +1,4 @@
-import { Config, gql } from "apollo-server";
+import { Config, gql } from "apollo-server-lambda";
 import { readFileSync } from "fs";
 import { resolve } from "path";
 import * as types from "./types";
@@ -85,7 +85,7 @@ const context = () => ({
       polarisDashboard: polarisDashboard
 });
 
-export const config = {
+export const config: Config = {
         typeDefs,
         resolvers,
         context,

@@ -1,8 +1,8 @@
 const { ApolloServer } = require('apollo-server-lambda')
-const { createConfig } = require('./config')
+const { config } = require('dist/common/graphqlConfig')
 
 console.log('running as lambda')
 
-const server = new ApolloServer(createConfig())
+const server = new ApolloServer(config)
 
 exports.lambdaHandler = server.createHandler();
