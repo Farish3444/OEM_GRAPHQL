@@ -53,8 +53,8 @@ export interface AvailabilityInfo {
 
 // interface for ResponseError
 export interface ResponseError {
-  code: string;
-  identifier:string;
+  code: number;
+  identifier?:string;
   message: string;
 }
 

@@ -12,7 +12,7 @@ const USER_NAME = "STEVEBB";
 const PASSWORD = "BBVPS62";
 const SUCCESS_MESSAGE = "Kawasaki Dashboard - Process completed successfully";
 const ERROR_MESSAGE = "Kawasaki Dashboard - Process failed!";
-const VALIDATIN_CODE = 200;
+const VALIDATION_CODE = 200;
 const ERROR_CODE = 500;
 
 export class KawasakiDashboard implements ManufacturerInterface {
@@ -121,7 +121,7 @@ export class KawasakiDashboard implements ManufacturerInterface {
         submitButton[0].click(),
       ]);
 
-      const responseGet: any = await this.page.evaluate(({ arr, ERROR_CODE, ERROR_MESSAGE }) => {
+      const responseGet: any = await this.page.evaluate(({ arr, ERROR_CODE, VALIDATION_CODE }) => {
         function checkImgUrl(imgUrls) {
           const imgName = [
             "diamond-green-1.gif",
@@ -327,7 +327,7 @@ export class KawasakiDashboard implements ManufacturerInterface {
               });
               validationMessages.push({
                 message: msg,
-                code: VALIDATIN_CODE,
+                code: VALIDATION_CODE,
                 identifier: identifier,
               });
             });
@@ -361,7 +361,7 @@ export class KawasakiDashboard implements ManufacturerInterface {
         }
 
         return resultArray;
-      }, { arr, ERROR_CODE, ERROR_MESSAGE });
+      }, { arr, ERROR_CODE, VALIDATION_CODE });
 
       console.log("responseGet==>", responseGet);
       this.data = {
@@ -465,6 +465,7 @@ export class KawasakiDashboard implements ManufacturerInterface {
       await this.browser.close();
     }
   }
+
   public static transformJSON2GraphQL(
     jsonResponse: any,
     inputData: types.QueryInput

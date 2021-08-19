@@ -39,7 +39,7 @@ type AvailabilityInfo {
 
 "The response error object that includes code and message properties"
 type ResponseError {
-  code: String!
+  code: Int!
   identifier: String
   message: String
 }
