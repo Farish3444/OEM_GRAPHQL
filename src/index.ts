@@ -6,7 +6,7 @@ const {
 import { readFileSync } from "fs";
 import { resolve } from "path";
 import * as types from "./common/types";
-import { KawasakiDashboard, kawasakiDashboard, yamahaDashboard, YamahaDashboard, polarisDashboard, PolarisDashboard  } from "./dashboards";
+import { KawasakiDashboard, kawasakiDashboard, yamahaDashboard, YamahaDashboard, polarisDashboard, PolarisDashboard, hondaDashboard, HondaDashboard  } from "./dashboards";
 import { config } from "./common/graphqlConfig";
 
 const typeDefs = gql(
@@ -58,6 +58,11 @@ const resolvers: any = {
           );
           return graphQLResponsePolaris;
         case types.ManufacturerType.HONDA:
+          console.log("Calling Honda dashboard...");
+          let jsonResponseHonda = await context.hondaDashboard.crawl(
+            args.input.partInfos
+          );
+          console.log("jsonResponseHonda==>", jsonResponseHonda);
           return {
             responseError: {
               code: "100",
@@ -83,7 +88,8 @@ try {
     context: () => ({
       kawasakiDashboard: kawasakiDashboard,
       yamahaDashboard: yamahaDashboard,
-      polarisDashboard: polarisDashboard
+      polarisDashboard: polarisDashboard,
+      hondaDashboard: hondaDashboard
     }),
     plugins: [
       ApolloServerPluginLandingPageGraphQLPlayground({
