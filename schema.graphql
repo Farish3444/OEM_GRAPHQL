@@ -53,7 +53,7 @@ type OEMAvailabilityResponse {
 "The OEMPartInfo request input object"
 input OEMPartInfo {
   partNumber: String!
-  requestedQty: Int!
+  requestedQty: Int
   skuId: String
   VIN: String
   vehicleType: String
