@@ -3,7 +3,7 @@ import puppeteer from "puppeteer";
 import fs from "fs";
 import * as types from "../../common/types";
 
-const BASE_URL = "https://  www.yamaha-dealers.com/ymus/web/home.html";
+const BASE_URL = "https://www.yamaha-dealers.com/ymus/web/home.html";
 const MENU_URL = "https://www.yamaha-dealers.com/ymus/web/home.html#parts";
 const SEARCH_URL = "https://www.yamaha-dealers.com/ymus/jaxrs/partsAvailabilityRedirect/forward";
 const COOKIE_PATH = "../";
@@ -143,7 +143,20 @@ export class YamahaDashboard implements ManufacturerInterface {
           });
         }
       }
-
+      if(!arr.length) {
+        await this.browser.close();
+        return this.data = {
+          errorMessages: [
+            {
+              code: ERROR_CODE,
+              identifier: "",
+              message: ERROR_MESSAGE,
+            },
+          ],
+          message: SUCCESS_MESSAGE,
+          items: [],
+        };
+      }
       await tabThree.waitForTimeout(2000);
 
       let testButton = await tabThree.$x('//*[@id="WD1F"]');
@@ -179,8 +192,7 @@ export class YamahaDashboard implements ManufacturerInterface {
           let json = {};
           let value_array = new Array();
           let query = document.querySelectorAll("#WD24-contentTBody > tr");
-          
-          for (let i = 0; i < arr.length; i++) {
+          for (let i = 0; i < query.length; i++) {            
             let get_query = query[i + 2];            
             if (get_query) {
               let select_query = get_query.querySelectorAll("td");
@@ -190,7 +202,7 @@ export class YamahaDashboard implements ManufacturerInterface {
                   if (j == 0) {
                     const input = get_query_value.querySelector("input");
                     let value = input && input.value;                    
-                    // if(!value) continue 
+                    if(!value) i = query.length
                     value_array.push(value);
                   } else {
                     const span = get_query_value.querySelector("span");
@@ -202,14 +214,15 @@ export class YamahaDashboard implements ManufacturerInterface {
             }
             for (let k = 0; k < create_key.length; k++) {
               json[create_key[k]] = value_array[k];
-            }            
+            }      
             data.push(json);
             json = {};
             value_array = [];
           }
           let validationMessages = new Array();
           let itemArray = new Array();
-          let resultArray = new Array();          
+          let resultArray = new Array();    
+          data.pop();                
           for (let k = 0; k < data.length; k++) {
             if (data[k].Status === "Invalid") {
               validationMessages.push({
@@ -218,9 +231,22 @@ export class YamahaDashboard implements ManufacturerInterface {
                 identifier: data[k].PartNumber,
               });
             }
+            else if(data[k].Status === "Superseded") {
+              validationMessages.push({
+                message: data[k].Description,
+                code: 200,
+                identifier: data[k].PartNumber,
+              });
+              data[k+1].supersededPartNumber = data[k].PartNumber
+              itemArray.push(data[k+1])
+              k++;
+            }
             else
-              itemArray.push(data[k])
-          }
+              {
+                data[k].supersededPartNumber = null
+                itemArray.push(data[k])
+              }
+          }          
           if (validationMessages.length > 0) {
             resultArray.push({ validationMessages: validationMessages });
           } else {
@@ -240,7 +266,6 @@ export class YamahaDashboard implements ManufacturerInterface {
       // this.data = create_value;
       this.data = {
         errorMessages: create_value && [
-          // ...create_value[1].errorMessages,
           ...create_value[0].validationMessages,
         ],
         message: SUCCESS_MESSAGE,
@@ -251,7 +276,7 @@ export class YamahaDashboard implements ManufacturerInterface {
       console.log("Total Process Time in milliseconds", Total_time);
 
       console.log("Process Completed Successfully");
-      // await this.browser.close();
+      await this.browser.close();
     } catch (Error) {
       console.log(Error);
       const url = this.page.url();
@@ -361,11 +386,8 @@ export class YamahaDashboard implements ManufacturerInterface {
         quantity: jsonResponse.items[i].PackQty
           ? jsonResponse.items[i].PackQty
           : 0,
-        supersededPartNumber:
-          jsonResponse.items[i].Status == "CANCELED"
-            ? jsonResponse.items[i].PartNumber
-            : null,
-        requestedPartNumber: inputData.partInfos[i].partNumber,
+        supersededPartNumber: jsonResponse.items[i].supersededPartNumber,
+        requestedPartNumber: jsonResponse.items[i].PartNumber ?jsonResponse.items[i].PartNumber:inputData.partInfos[i].partNumber,
         requestedQty: inputData.partInfos[i].requestedQty,
         requestedManufacturerType: inputData.manufacturerType.toString(),
         timeStamp: uniqueTimeStamp,
