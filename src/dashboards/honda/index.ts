@@ -6,8 +6,9 @@ import * as types from "../../common/types";
 const COOKIE_PATH = "../";
 const USER_NAME = "STEVEBB";
 const PASSWORD = "BBVPS62";
-const SUCCESS_MESSAGE = "Kawasaki Dashboard - Process completed successfully";
-const ERROR_MESSAGE = "Kawasaki Dashboard - Process failed!";
+const DEALERNUMBER = "106276"
+const SUCCESS_MESSAGE = "Honda Dashboard - Process completed successfully";
+const ERROR_MESSAGE = "Honda Dashboard - Process failed!";
 const VALIDATION_CODE = 200;
 const ERROR_CODE = 500;
 
@@ -33,10 +34,16 @@ export class HondaDashboard implements ManufacturerInterface {
   public async crawl(partInfos: [types.OEMPartInfo]) {
     this.arr = partInfos;
     await this.initialize();
-    await this.login("STEVEB1", "BBVE1962s!", "106276");
+    const success =  await this.login(USER_NAME, PASSWORD, DEALERNUMBER);
     await this.inquiry(this.arr);
+    
+    // if(success){
+    //   return await this.inquiry(this.arr) //////////////////
+    // }
+
     return this.data;
   }
+
   public async initialize() {
     try {
       this.browser = await puppeteer.launch({
@@ -46,30 +53,45 @@ export class HondaDashboard implements ManufacturerInterface {
           "--disable-dev-shm-usage", // <-- add this one
         ],
       });
-
       this.page = await this.browser.newPage();
-    } catch (error) {
+    } 
+    catch (error) {
+      this.data = {
+        code: ERROR_CODE,
+        identifier: "",
+        message: ERROR_MESSAGE,
+      };
       console.log("initialize Error===>", error);
     }
   }
 
   public async login(username: string, password: string, dealrnumber: string) {
     try {
-      //   if (fs.existsSync(this.cookieFile)) {
-      //     const exCookies = fs.readFileSync(this.cookieFile, "utf8");
+      if (fs.existsSync(this.cookieFile)) {
+        const exCookies = fs.readFileSync(this.cookieFile, "utf8");
 
-      //     if (exCookies) {
-      //       const deserializedCookies = JSON.parse(exCookies);
-      //       await this.page.setCookie(...deserializedCookies);
-      //     }
-      //     this.processData = true;
-      //   } else {
-      await this.reLogin(username, password, dealrnumber);
-      //   }
-      this.processData = true;
-    } catch (error) {
-      console.log("login error==>", error);
-      await this.reLogin(path, this.username, this.password);
+        if (exCookies) {
+          const deserializedCookies = JSON.parse(exCookies);
+          await this.page.setCookie(...deserializedCookies);
+        }
+        this.processData = true;
+        return true;
+      } else {
+        return await this.reLogin(this.cookieFile, username, password);
+      }
+    } catch (Error) {
+      this.data = {
+        errorMessages: [
+          {
+            code: ERROR_CODE,
+            identifier: "",
+            message: ERROR_MESSAGE,
+          },
+        ],
+        message: SUCCESS_MESSAGE,
+        items: [],
+      };
+      return await this.reLogin(COOKIE_PATH, username, password);
     }
   }
 
@@ -93,7 +115,7 @@ export class HondaDashboard implements ManufacturerInterface {
         await this.page.type('input[name="searchText"]', arr[d].partNumber, {
           delay: 100,
         });
-
+        
         let submitButton = await this.page.$x('//*[@id="Submit1"]');
         await Promise.all([
           this.page.waitForNavigation(),

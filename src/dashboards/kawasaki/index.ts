@@ -39,7 +39,8 @@ export class KawasakiDashboard implements ManufacturerInterface {
     }
     return this.data;
   }
-  public async initialize() {
+
+  public async initialize() { 
     try {
       this.browser = await puppeteer.launch({
         headless: true,
