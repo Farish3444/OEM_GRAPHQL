@@ -56,7 +56,8 @@ input OEMPartInfo {
   requestedQty: Int
   skuId: String
   VIN: String
-  vehicleType: String
+  vehicleType: String,
+  productLine: Int
 }
 
 "The QueryInput request input object"
