@@ -7,8 +7,8 @@ const COOKIE_PATH = "../";
 const USER_NAME = "stevebb.isenhower";
 const PASSWORD = "Sibbvps@1962";
 const DEALERNUMBER = "705740";
-const SUCCESS_MESSAGE = "Honda Dashboard - Process completed successfully";
-const ERROR_MESSAGE = "Honda Dashboard - Process failed!";
+const SUCCESS_MESSAGE = "Can-Am Dashboard - Process completed successfully";
+const ERROR_MESSAGE = "Can-Am Dashboard - Process failed!";
 const VALIDATION_CODE = 200;
 const ERROR_CODE = 500;
 const BASE_URL = "https://brp.secure.force.com/";
@@ -79,76 +79,110 @@ export class CanAmDashboard implements ManufacturerInterface {
     try {
       var data = new Array();
       let start = +new Date();
-      
       for (let d = 0; d < arr.length; d++) {
-        await this.page.goto(ITEM_INQUIRY_URL, { waitUntil: "domcontentloaded" });
-        // await this.page.goto("http://localhost/parts.html", {
-        //   waitUntil: "domcontentloaded",
-        // });
+        await this.page.goto(ITEM_INQUIRY_URL, {
+          waitUntil: "domcontentloaded",
+        });
         await this.page.waitForTimeout(3000);
-
         await this.page.select(
           "#PlaceHolderMain_SelectProductLine",
           arr[d].productLine.toString()
         );
-        //await this.page.waitForTimeout(2000);
-
         await this.page.type(
           'input[id="PlaceHolderMain_PartEntryZone_PartNumber_0"]',
-          arr[d].partNumber, 100
+          arr[d].partNumber,
+          100
         );
         await this.page.type(
           'input[id="PlaceHolderMain_PartEntryZone_RequestedQuantity_0"]',
-          arr[d].requestedQty.toString(), 100
+          arr[d].requestedQty.toString(),
+          100
         );
-
         let nextButton = await this.page.$x(
           '//*[@id="CommandBar1_SubmitAction_ActionButton"]'
         );
         await nextButton[0].click();
-               
         await this.page.waitForTimeout(6000);
-        
-        let create_data = await this.page.evaluate(({arr, d}) => {
-          let key_array = new Array();
-          let val_array = new Array();
-          let jsonArray:any = new Array();
-          const rows = document.querySelectorAll(
-            "table.SectionTable > tbody > tr > td:nth-child(1) > table > tbody > tr"
-          );
-          let key_query = rows[0].querySelectorAll("th");
-          for (let i = 0; i < key_query.length; i++) {
-            const key_element = key_query[i].innerText;
-            key_array.push(
-              key_element.replace(/\r?\n|\r/g, "").replace(/ /g, "")
-            );
-          }
+        let create_data = await this.page.evaluate(
+          ({ arr, d }) => {
+            const resultArray = new Array();
 
-          let jsonObject: any;
-          
-          for (let i = 1; i < rows.length; i++) {
-            jsonObject = {};
-            const tds = rows[i].querySelectorAll("td");
-            for (let j = 0; j < tds.length; j++) {
-              const val_element = tds[j].innerText;
-              val_array.push(
-                val_element.replace(/\r?\n|\r/g, "").replace(/ /g, "")
+            let key_array = new Array();
+            let val_array = new Array();
+            let jsonArray: any = new Array();
+            const rows = document.querySelectorAll(
+              "table.SectionTable > tbody > tr > td:nth-child(1) > table > tbody > tr"
+            );
+            let key_query = rows[0].querySelectorAll("th");
+            for (let i = 0; i < key_query.length; i++) {
+              const key_element = key_query[i].innerText;
+              key_array.push(
+                key_element.replace(/\r?\n|\r/g, "").replace(/ /g, "")
               );
-              jsonObject[key_array[j]] = val_element.replace(/\r?\n|\r/g, "").replace(/ /g, "");
             }
-            jsonArray.push(jsonObject);
-          }
-          console.log("jsonArray==>", jsonArray);
-          const result = jsonArray.filter(item => item['PartNumber'] === arr[d].partNumber.toString()  && item['Ex.'] !== '*');
-          console.log("result==>", result);
-          return result[0];
-        }, { arr, d});
-        console.log("create_data==>", create_data)
+
+            let jsonObject: any;
+
+            for (let i = 1; i < rows.length; i++) {
+              jsonObject = {};
+              const tds = rows[i].querySelectorAll("td");
+              for (let j = 0; j < tds.length && tds.length > 1; j++) {
+                const val_element = tds[j].innerText;
+                console.log("val_element==>", val_element);
+                val_array.push(
+                  val_element.replace(/\r?\n|\r/g, "").replace(/ /g, "")
+                );
+                jsonObject[key_array[j]] = val_element
+                  .replace(/\r?\n|\r/g, "")
+                  .replace(/ /g, "");
+              }
+              if (tds.length > 1) {
+                jsonArray.push(jsonObject);
+              }
+            }
+            console.log("jsonArray==>", jsonArray);
+            const result = jsonArray.filter(
+              (item) =>
+                item["PartNumber"] === arr[d].partNumber.toString() &&
+                item["Ex."] !== "*"
+            );
+            console.log("result==>", result);
+            resultArray.push(result || []);
+
+            const queryServerError = document.querySelectorAll(".ServerError");
+            const validationMessages = new Array();
+            if (queryServerError) {
+              queryServerError.forEach((element) => {
+                const msg = (<HTMLSpanElement>element).innerText;
+                let identifier = "";
+                identifier = arr[d].partNumber;
+                validationMessages.push({
+                  message: msg,
+                  code: 200,
+                  identifier: identifier,
+                });
+              });
+              if (validationMessages.length > 0) {
+                resultArray.push({ validationMessages: validationMessages });
+              } else {
+                resultArray.push({ validationMessages: [] });
+              }
+            }
+            return resultArray; //result[0];
+          },
+          { arr, d }
+        );
+        console.log("create_data==>", create_data);
         data.push(create_data);
       }
+
+      console.log("data===>", data);
+      this.data = {
+        errorMessages: data && data[0][1].validationMessages,
+        message: SUCCESS_MESSAGE,
+        items: data[0][0],
+      };
       
-      console.log("create_data====", data);
-      this.data = data;
       let Total_time = +new Date() - start;
       console.log("Total Process Time in milliseconds", Total_time);
       console.log("Process Completed Successfully");
