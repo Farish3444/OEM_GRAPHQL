@@ -34,17 +34,16 @@ export class CanAmDashboard implements ManufacturerInterface {
     this.arr = partInfos;
     await this.initialize();
     const success = await this.login(USER_NAME, PASSWORD, DEALERNUMBER);
-    console.log("success==>", success);
     if (success) {
       await this.inquiry(this.arr);
     }
-    //await this.browser.close();
+    await this.browser.close();
     return this.data;
   }
   public async initialize() {
     try {
       this.browser = await puppeteer.launch({
-        headless: false,
+        headless: true,
         args: ["--no-sandbox", "--disable-dev-shm-usage"],
       });
 
@@ -317,6 +316,37 @@ export class CanAmDashboard implements ManufacturerInterface {
       await this.browser.close();
       return false;
     }
+  }
+
+  public static transformJSON2GraphQL(
+    jsonResponse: any,
+    inputData: types.QueryInput
+  ): types.OEMAvailabilityResponse {
+    // Leverage this method to transform dashboard json response to GraphQL response
+    let arrayList = new Array();
+    // let errorResult = new Array();
+    // if (jsonResponse.items && jsonResponse.items.length > 0) {
+      console.log("jsonResponse==>", jsonResponse);
+    for (let i = 0; i < jsonResponse?.items.length; i++) {
+      let uniqueTimeStamp = new Date();
+      let uniqueID = Math.floor(Date.now() + Math.random() * 1000);
+      arrayList.push({
+        id: uniqueID,
+        status: jsonResponse.items[i].Status,
+        statusMessage: jsonResponse.items[i].Description,
+        quantity: 1,
+        // leadTime: graphQLResponse.ApplicableYears,
+        //supersededPartNumber: jsonResponse.items[i].supersededPartNumber,
+        requestedPartNumber: inputData.partInfos[i].partNumber,
+        requestedQty: inputData.partInfos[i].requestedQty,
+        //requestedManufacturerType: inputData.manufacturerType.toString(),
+        timeStamp: uniqueTimeStamp,
+      });
+    }
+    return {
+      result: arrayList,
+      responseErrors: jsonResponse?.errorMessages,
+    };
   }
 }
 

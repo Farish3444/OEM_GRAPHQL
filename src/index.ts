@@ -75,12 +75,12 @@ const resolvers: any = {
               args.input.partInfos
             );
             console.log("jsonResponseCanAm==>", jsonResponseCanAm);
-            return {
-              responseError: {
-                code: "100",
-                message: " Comming Soon...",
-              }
-            }
+            let graphQLResponseCanAm = CanAmDashboard.transformJSON2GraphQL(
+              jsonResponseCanAm,
+              args.input
+            );
+            console.log("graphQLResponseCanAm==>", graphQLResponseCanAm);
+            return graphQLResponseCanAm;
         default:
           return {
             responseError: {

@@ -83,3 +83,25 @@ query BB_OEM {
     }
   }
 }
+
+# CanAm
+query BB_OEM {
+  queryOEMAvailability (input: {
+    manufacturerType: CAN_AM,
+    partInfos: [
+  {partNumber:"709200395", requestedQty: 1, productLine: 90}]
+  }) {
+    result {
+      id
+      quantity
+      statusMessage
+      requestedPartNumber
+      requestedQty
+    }
+    responseErrors{
+      code
+      identifier
+      message
+    }
+  }
+}

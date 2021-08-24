@@ -21,6 +21,13 @@ export enum ManufacturerType {
   BMW,
 }
 
+export enum ProductLine {
+  ATV = 8,
+  Watercraft = 51,
+  Roadster = 60,
+  SidebySide = 90
+}
+
 // interface for OEMPartInfo
 export interface OEMPartInfo {
   partNumber: string;
