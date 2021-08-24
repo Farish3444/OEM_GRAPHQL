@@ -33,8 +33,12 @@ export class CanAmDashboard implements ManufacturerInterface {
   public async crawl(partInfos: [types.OEMPartInfo]) {
     this.arr = partInfos;
     await this.initialize();
-    await this.login(USER_NAME, PASSWORD, DEALERNUMBER);
-    await this.inquiry(this.arr);
+    const success = await this.login(USER_NAME, PASSWORD, DEALERNUMBER);
+    console.log("success==>", success);
+    if (success) {
+      await this.inquiry(this.arr);
+    }
+    //await this.browser.close();
     return this.data;
   }
   public async initialize() {
@@ -47,10 +51,15 @@ export class CanAmDashboard implements ManufacturerInterface {
       this.page = await this.browser.newPage();
     } catch (error) {
       console.log("initialize Error===>", error);
+      this.data = {
+        code: ERROR_CODE,
+        identifier: "",
+        message: ERROR_MESSAGE,
+      };
     }
   }
 
-  public async login(username: string, password: string, dealrnumber: string) {
+  public async login(username: string, password: string, dealrnumber: string): Promise<any> {
     try {
       if (fs.existsSync(this.cookieFile)) {
         const exCookies = fs.readFileSync(this.cookieFile, "utf8");
@@ -60,14 +69,26 @@ export class CanAmDashboard implements ManufacturerInterface {
           await this.page.setCookie(...deserializedCookies);
           const cookies = await this.page.cookies();
         }
+        this.processData = true;
+        return true;
       } else {
-        await this.reLogin(USER_NAME, PASSWORD, DEALERNUMBER);
+        return await this.reLogin(USER_NAME, PASSWORD, DEALERNUMBER);
       }
-      this.processData = true;
+      
     } catch (error) {
       console.log("login error==>", error);
-
-      await this.reLogin(username, password, dealrnumber);
+      this.data = {
+        errorMessages: [
+          {
+            code: ERROR_CODE,
+            identifier: "",
+            message: ERROR_MESSAGE,
+          },
+        ],
+        message: SUCCESS_MESSAGE,
+        items: [],
+      };
+      return await this.reLogin(username, password, dealrnumber);
     }
   }
 
@@ -102,9 +123,9 @@ export class CanAmDashboard implements ManufacturerInterface {
           '//*[@id="CommandBar1_SubmitAction_ActionButton"]'
         );
         await nextButton[0].click();
-        await this.page.waitForTimeout(6000);
+        await this.page.waitForTimeout(8000);
         let create_data = await this.page.evaluate(
-          ({ arr, d }) => {
+          ({ arr, d, VALIDATION_CODE }) => {
             const resultArray = new Array();
 
             let key_array = new Array();
@@ -113,6 +134,7 @@ export class CanAmDashboard implements ManufacturerInterface {
             const rows = document.querySelectorAll(
               "table.SectionTable > tbody > tr > td:nth-child(1) > table > tbody > tr"
             );
+            console.log("rows==>", rows);
             let key_query = rows[0].querySelectorAll("th");
             for (let i = 0; i < key_query.length; i++) {
               const key_element = key_query[i].innerText;
@@ -121,14 +143,16 @@ export class CanAmDashboard implements ManufacturerInterface {
               );
             }
 
-            let jsonObject: any;
+            console.log("key_array==>", key_array);
 
+            let jsonObject: any;
+            
             for (let i = 1; i < rows.length; i++) {
               jsonObject = {};
               const tds = rows[i].querySelectorAll("td");
               for (let j = 0; j < tds.length && tds.length > 1; j++) {
                 const val_element = tds[j].innerText;
-                console.log("val_element==>", val_element);
+                //console.log("val_element==>", val_element);
                 val_array.push(
                   val_element.replace(/\r?\n|\r/g, "").replace(/ /g, "")
                 );
@@ -149,16 +173,16 @@ export class CanAmDashboard implements ManufacturerInterface {
             console.log("result==>", result);
             resultArray.push(result || []);
 
-            const queryServerError = document.querySelectorAll(".ServerError");
+            const queryServerError = document.querySelectorAll("ul > li");
             const validationMessages = new Array();
             if (queryServerError) {
               queryServerError.forEach((element) => {
-                const msg = (<HTMLSpanElement>element).innerText;
+                const msg = (<HTMLLIElement>element).innerText;
                 let identifier = "";
                 identifier = arr[d].partNumber;
                 validationMessages.push({
                   message: msg,
-                  code: 200,
+                  code: VALIDATION_CODE,
                   identifier: identifier,
                 });
               });
@@ -170,7 +194,7 @@ export class CanAmDashboard implements ManufacturerInterface {
             }
             return resultArray; //result[0];
           },
-          { arr, d }
+          { arr, d, VALIDATION_CODE }
         );
         console.log("create_data==>", create_data);
         data.push(create_data);
@@ -182,15 +206,29 @@ export class CanAmDashboard implements ManufacturerInterface {
         message: SUCCESS_MESSAGE,
         items: data[0][0],
       };
-      
+
       let Total_time = +new Date() - start;
       console.log("Total Process Time in milliseconds", Total_time);
       console.log("Process Completed Successfully");
-      //await this.browser.close();
     } catch (error) {
-      console.log("inquiry Error==>", error);
-
-      await this.reLogin(USER_NAME, PASSWORD, DEALERNUMBER);
+      console.log(Error);
+      const url = this.page.url();
+      if (url.includes("DealerLogin.asp?bolTimeout=true")) {
+        fs.unlinkSync(this.cookieFile);
+        return this.crawl(this.arr);
+      }
+      this.data = {
+        errorMessages: [
+          {
+            code: ERROR_CODE,
+            identifier: "",
+            message: ERROR_MESSAGE,
+          },
+        ],
+        message: SUCCESS_MESSAGE,
+        items: [],
+      };
+      await this.browser.close();
     }
   }
 
@@ -199,39 +237,86 @@ export class CanAmDashboard implements ManufacturerInterface {
     password: string,
     dealrnumber: string
   ) {
-    await this.page.goto(BASE_URL);
-    await this.page.waitForTimeout(2000);
-    const selector = 'input[name="j_id0:j_id5:Login1_Dealer_No"]';
-    await this.page.evaluate((selector) => {
-      document.querySelector(selector).value = "";
-    }, selector);
-    await this.page.type(
-      'input[name="j_id0:j_id5:Login1_Dealer_No"]',
-      dealrnumber,
-      100
-    );
-    const selUser = 'input[name="j_id0:j_id5:Login1_UserName"]';
-    await this.page.evaluate((selUser) => {
-      document.querySelector(selUser).value = "";
-    }, selUser);
-    await this.page.type(
-      'input[name="j_id0:j_id5:Login1_UserName"]',
-      username,
-      100
-    );
-    await this.page.type(
-      'input[name="j_id0:j_id5:Login1_Password"]',
-      password,
-      100
-    );
+    try {
+      await this.page.goto(BASE_URL);
+      await this.page.waitForTimeout(2000);
+      const selector = 'input[name="j_id0:j_id5:Login1_Dealer_No"]';
+      await this.page.evaluate((selector) => {
+        document.querySelector(selector).value = "";
+      }, selector);
+      await this.page.type(
+        'input[name="j_id0:j_id5:Login1_Dealer_No"]',
+        dealrnumber,
+        100
+      );
+      const selUser = 'input[name="j_id0:j_id5:Login1_UserName"]';
+      await this.page.evaluate((selUser) => {
+        document.querySelector(selUser).value = "";
+      }, selUser);
+      await this.page.type(
+        'input[name="j_id0:j_id5:Login1_UserName"]',
+        username,
+        100
+      );
+      await this.page.type(
+        'input[name="j_id0:j_id5:Login1_Password"]',
+        password,
+        100
+      );
 
-    let signInButton = await this.page.$x('//*[@id="j_id0:j_id5:j_id24"]');
-    await Promise.all([this.page.waitForNavigation(), signInButton[0].click()]);
+      let signInButton = await this.page.$x('//*[@id="j_id0:j_id5:j_id24"]');
+      await Promise.all([
+        this.page.waitForNavigation(),
+        signInButton[0].click(),
+      ]);
 
-    const cookies = await this.page.cookies();
-    const cookieJson = JSON.stringify(cookies);
-    fs.writeFileSync(this.cookieFile, cookieJson);
-    await this.inquiry(this.arr);
+      const queryErrorMessages = await this.page.evaluate(
+        ({ ERROR_CODE, ERROR_MESSAGE }) => {
+          const errorMessages: any = new Array();
+          const queryErrorMessage = document.querySelectorAll("td#LoginFailure.ServerErrorLogin");
+
+          if (queryErrorMessage) {
+            queryErrorMessage.forEach((element) => {
+              errorMessages.push({
+                message: ERROR_MESSAGE,
+                code: ERROR_CODE,
+                identifier: "",
+              });
+            });
+          }
+          return errorMessages;
+        },
+        { ERROR_CODE, ERROR_MESSAGE }
+      );
+      if (queryErrorMessages.length > 0) {
+        this.data = {
+          errorMessages: queryErrorMessages,
+          message: SUCCESS_MESSAGE,
+          items: [],
+        };
+        return false;
+      } else {
+        const cookies = await this.page.cookies();
+        const cookieJson = JSON.stringify(cookies);
+        fs.writeFileSync(this.cookieFile, cookieJson);
+        await this.inquiry(this.arr);
+        return true;
+      }
+    } catch (Error) {
+      this.data = {
+        errorMessages: [
+          {
+            code: ERROR_CODE,
+            identifier: "",
+            message: ERROR_MESSAGE,
+          },
+        ],
+        message: SUCCESS_MESSAGE,
+        items: [],
+      };
+      await this.browser.close();
+      return false;
+    }
   }
 }
 
