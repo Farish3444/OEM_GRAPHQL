@@ -213,7 +213,7 @@ export class CanAmDashboard implements ManufacturerInterface {
     } catch (error) {
       console.log(Error);
       const url = this.page.url();
-      if (url.includes("DealerLogin.asp?bolTimeout=true")) {
+      if (url.includes("RemoteAccessAuthorizationPage.apexp")) {
         fs.unlinkSync(this.cookieFile);
         return this.crawl(this.arr);
       }
