@@ -6,7 +6,7 @@ const {
 import { readFileSync } from "fs";
 import { resolve } from "path";
 import * as types from "./common/types";
-import { KawasakiDashboard, kawasakiDashboard, yamahaDashboard, YamahaDashboard, polarisDashboard, PolarisDashboard, hondaDashboard, HondaDashboard  } from "./dashboards";
+import { KawasakiDashboard, kawasakiDashboard, yamahaDashboard, YamahaDashboard, polarisDashboard, PolarisDashboard, hondaDashboard, HondaDashboard, canAmDashboard, CanAmDashboard  } from "./dashboards";
 import { config } from "./common/graphqlConfig";
 
 const typeDefs = gql(
@@ -69,6 +69,18 @@ const resolvers: any = {
               message: " Comming Soon...",
             }
           }
+          case types.ManufacturerType.CAN_AM:
+            console.log("Calling CanAm dashboard...");
+            let jsonResponseCanAm = await context.canAmDashboard.crawl(
+              args.input.partInfos
+            );
+            console.log("jsonResponseCanAm==>", jsonResponseCanAm);
+            return {
+              responseError: {
+                code: "100",
+                message: " Comming Soon...",
+              }
+            }
         default:
           return {
             responseError: {
@@ -89,7 +101,8 @@ try {
       kawasakiDashboard: kawasakiDashboard,
       yamahaDashboard: yamahaDashboard,
       polarisDashboard: polarisDashboard,
-      hondaDashboard: hondaDashboard
+      hondaDashboard: hondaDashboard,
+      canAmDashboard: canAmDashboard
     }),
     plugins: [
       ApolloServerPluginLandingPageGraphQLPlayground({

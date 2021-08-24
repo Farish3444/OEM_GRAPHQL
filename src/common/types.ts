@@ -28,6 +28,7 @@ export interface OEMPartInfo {
   skuId?: string;
   VIN?: string;
   vehicleType: string;
+  productLine?: number;
 }
 
 // interface for QueryInput
