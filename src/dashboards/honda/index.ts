@@ -5,8 +5,8 @@ import * as types from "../../common/types";
 
 const COOKIE_PATH = "../";
 const USER_NAME = "STEVEBB";
-const PASSWORD = "BBVPS62";
-const DEALERNUMBER = "106276"
+const PASSWORD = "  ";
+const DEALERNUMBER = "106276";
 const SUCCESS_MESSAGE = "Honda Dashboard - Process completed successfully";
 const ERROR_MESSAGE = "Honda Dashboard - Process failed!";
 const VALIDATION_CODE = 200;
@@ -34,7 +34,7 @@ export class HondaDashboard implements ManufacturerInterface {
   public async crawl(partInfos: [types.OEMPartInfo]) {
     this.arr = partInfos;
     await this.initialize();
-    const success =  await this.login(USER_NAME, PASSWORD, DEALERNUMBER);
+    await this.login(USER_NAME,PASSWORD,DEALERNUMBER);
     await this.inquiry(this.arr);
     
     // if(success){
@@ -65,7 +65,7 @@ export class HondaDashboard implements ManufacturerInterface {
     }
   }
 
-  public async login(username: string, password: string, dealrnumber: string) {
+  public async login(username: string, password: string,dealrnumber: string) {
     try {
       if (fs.existsSync(this.cookieFile)) {
         const exCookies = fs.readFileSync(this.cookieFile, "utf8");
@@ -77,7 +77,7 @@ export class HondaDashboard implements ManufacturerInterface {
         this.processData = true;
         return true;
       } else {
-        return await this.reLogin(this.cookieFile, username, password);
+        return await this.reLogin( username, password,dealrnumber);
       }
     } catch (Error) {
       this.data = {
@@ -91,7 +91,7 @@ export class HondaDashboard implements ManufacturerInterface {
         message: SUCCESS_MESSAGE,
         items: [],
       };
-      return await this.reLogin(COOKIE_PATH, username, password);
+      return await this.reLogin(username, password,dealrnumber);
     }
   }
 
@@ -105,7 +105,7 @@ export class HondaDashboard implements ManufacturerInterface {
       let session_id = currentUrl.replace(/\{/g, "").replace(/\}/g, "");
       let menu_url = `https://www.in.honda.com/RRPAMCPE/programs/asp/remap13a.asp?AppTitle=Parts%20and%20Price%20Info&SessionId=${session_id}&MenuID=RDMAPH030500&MenuTab=3`;
       await this.page.goto(menu_url);
-      await this.page.waitForTimeout(2000);
+      await this.page.waitForTimeout(3000);
       var data = new Array();
       const selector = 'input[name="searchText"]';
       for (let d = 0; d < arr.length; d++) {
